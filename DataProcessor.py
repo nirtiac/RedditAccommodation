@@ -49,10 +49,10 @@ class DataProcessor:
         return nodes
 
     def get_subreddit_data(self, subreddit):
-        start = self.daterange(0)
-        end = self.daterange(1)
+        start = self.daterange[0]
+        end = self.daterange[1]
 
-        all_data_file_path = self.DATA_PATH+subreddit+"_"+self.daterange(0)+"_"+ self.daterange(1).pkl
+        all_data_file_path = self.DATA_PATH+subreddit+"_"+self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y")+".pkl"
 
         #TODO: This could be really big
         if os.path.exists(all_data_file_path):
@@ -96,7 +96,7 @@ class DataProcessor:
 
 def main():
 
-
+    print "I am here"
     date1 = datetime.datetime(2014, 11, 1)
     date2 =datetime.datetime(2014, 11, 2)
 
@@ -104,5 +104,5 @@ def main():
     dp.order_comments("mcgill")
 
 
-if "__name__" == "__main__":
+if __name__ == "__main__":
     main()
