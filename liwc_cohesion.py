@@ -16,6 +16,8 @@ def write_to_txt(turns):
             f1.write(tup[0])
         with open('./try/tuple_'+str(index)+'_person_2.txt', 'wb') as f2:
             f2.write(tup[1])
+            
+            
 '''
 - Takes in real turns
 - Returns shuffled fake turns
@@ -37,7 +39,6 @@ def create_fake_turns(turns):
         if p == 0:
             break
     return fake_turns
-
 
 
 '''
@@ -68,11 +69,9 @@ def cohesion_value(C, turns, liwc_path):
         # If both are not 0, cohesion exists:
         if 0 not in c_values:
             turns_with_C += 1
-            
-            
+                 
         # Changing it to a list of tuples (will be used in second_prob)
         real_turns.append(tuple(liwc_df.iloc[counter-2:counter, 0].values))
-
         counter += 2
     
     first_prob = turns_with_C / total_number_of_turns
@@ -104,4 +103,4 @@ def cohesion_value(C, turns, liwc_path):
 # turns = [('a hey','an hi'), ('good?', 'yeah I think'), ('the won', 'a india'), ('the bye', 'see you the the')]
 # Step 1: write_to_txt(turns)
 # Step 2: run LIWC and save results
-# Step 3:  cohesion_value('article', turns, path_to_liwc_results)
+# Step 3: cohesion_value('article', turns, path_to_liwc_results)
