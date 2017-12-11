@@ -1,3 +1,5 @@
+__author__ = 'Sunyam'
+
 # Step 1: Write turns to .txt files
 # Step 2: Run LIWC manually (once)
 # Step 3: Parse the LIWC output to calculate cohesion
