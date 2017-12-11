@@ -88,12 +88,11 @@ def accommodation_dict(dict_input, C, liwc_path):
 #         print "\n\n"
         conv_index += 1
     
-    # Now that we have the accommodation for each user pair, calculating Acc in entire dataset:
     return accom
     
     
 '''
-- Takes in the accommodation dictionary of the above function.
+- Takes in the accommodation dictionary returned by the above function.
 - Returns the accommodation exhibited in the entire dataset.
 '''
 def dataset_accom(acc_dict):
