@@ -1,3 +1,5 @@
+__author__ = 'Sunyam'
+
 from nltk import pos_tag
 from nltk.tokenize import word_tokenize
 import random
