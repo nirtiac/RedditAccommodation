@@ -143,9 +143,8 @@ def calculate_influence_dict(acc_dict):
         
         if reverse_userpair in acc_dict and user_pair in acc_dict:
             influence_dict[user_pair] = accom - acc_dict[reverse_userpair]
-            
-        acc_dict.pop(user_pair)
-        
+#         acc_dict.pop(user_pair)
+
     return influence_dict
 
 
