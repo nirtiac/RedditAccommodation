@@ -98,7 +98,40 @@ def accommodation_dict(dict_input, C, liwc_path):
 def dataset_accom(acc_dict):
     return np.array(acc_dict.values()).mean()
 
+
+'''
+- Takes in the accommodation dictionary of the above function
+- Returns the first term and second term (page 7 of paper, below Figure 2)
+'''
+def influence(acc_dict):
+    # Dictionary with key = user_pair; value = list of two floats: [Acc(a,b), Acc(b,a)]
+    influence_dict = {}
     
+    # Using the fact that sorted will have the user_pair in same order.
+    for user_pair, accomm in acc_dict.items():
+        SortedUserPair = tuple(sorted(user_pair))
+        
+        if SortedUserPair not in influence_dict:
+            influence_dict[SortedUserPair] = [accomm]
+            
+        elif SortedUserPair in influence_dict:
+            influence_dict[SortedUserPair].append(accomm)
+        
+    # Calculate first term (mean of max values) and second term (mean of min values):
+    first = []
+    second = []
+    for user_pair, acc_list in influence_dict.items():
+        # Checking if both users replied to each other (Eliminating one-way conversations)
+        if len(acc_list) == 2:
+            first.append(np.array(acc_list).max())
+            second.append(np.array(acc_list).min())
+    
+    first_term = np.array(first).mean()
+    second_term = np.array(second).mean()
+    
+    return first_term, second_term
+
+
 # EXAMPLE RUN:
 # my = {('user1', 'user2'): [('hi','hello'), ('how are you','good'), ('what else man', 'what do you think')], 
       ('user3', 'user4'): [('who is the best','we are'), ('you do not say','i will do whatever')],
@@ -107,3 +140,4 @@ def dataset_accom(acc_dict):
 # acc_dict = accommodation_dict(my, 'pronoun', liwc_path)
 # print acc_dict
 # print dataset_accom(acc_dict)
+# print influence(acc_dict)
