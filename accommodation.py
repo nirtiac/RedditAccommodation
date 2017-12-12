@@ -132,6 +132,23 @@ def influence(acc_dict):
     return first_term, second_term
 
 
+'''
+- Takes in the accommodation dictionary returned by accommodation_dict
+- Returns a dictionary: key = user_pair; value = influence of user1 on user2
+'''
+def calculate_influence_dict(acc_dict):
+    influence_dict = {}
+    for user_pair, accom in acc_dict.items():
+        reverse_userpair = tuple(reversed(user_pair))
+        
+        if reverse_userpair in acc_dict and user_pair in acc_dict:
+            influence_dict[user_pair] = accom - acc_dict[reverse_userpair]
+            
+        acc_dict.pop(user_pair)
+        
+    return influence_dict
+
+
 # EXAMPLE RUN:
 # my = {('user1', 'user2'): [('hi','hello'), ('how are you','good'), ('what else man', 'what do you think')], 
       ('user3', 'user4'): [('who is the best','we are'), ('you do not say','i will do whatever')],
@@ -141,3 +158,4 @@ def influence(acc_dict):
 # print acc_dict
 # print dataset_accom(acc_dict)
 # print influence(acc_dict)
+# print calculate_influence_dict(acc_dict)
