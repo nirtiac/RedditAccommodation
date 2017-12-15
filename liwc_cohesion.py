@@ -51,42 +51,43 @@ def cohesion_value(C, turns, liwc_path):
     liwc_df = pd.read_csv(liwc_path, delimiter='\t')[['Filename', C]]
     
     total_rows = liwc_df.shape[0]
-    print "Total number of rows in dataframe: ", total_rows
+#     print "Total number of rows in dataframe: ", total_rows
     # Throw an error if this number is not even:
     if total_rows % 2 != 0:
         print "ERROR. Total number of rows in LIWC dataframe: ", total_rows
-        return None
+        exit(0)
     
     total_number_of_turns = total_rows / 2.0
     turns_with_C = 0.0
     
     # List of tuples that I'll pass to create_fake_turns:
     real_turns = []
-    
-    # Each pair of row is a turn in this DataFrame:
-    counter = 2
-    while counter <= total_rows:
-        c_values = liwc_df.iloc[counter-2:counter, 1].values
-#         print counter, c_values
-        # If both are not 0, cohesion exists:
+       
+    for tup in turns:
+        conv_index = turns.index(tup)
+        temp_df = liwc_df.loc[liwc_df.Filename.str.startswith('tuple_' + str(conv_index))]
+        # Throw an error if there are not 2 rows (because it a reply pair)
+        if temp_df.shape[0] != 2:
+            print "ERROR. temp_df should have two rows, but this one doesn't: ", temp_df
+            exit(0)
+            
+        c_values = temp_df[C].values
         if 0 not in c_values:
-            turns_with_C += 1
-                 
-        # Changing it to a list of tuples (will be used in second_prob)
-        real_turns.append(tuple(liwc_df.iloc[counter-2:counter, 0].values))
-        counter += 2
+            turns_with_C += 1    
+        # Creating a tuple of filenames (will be used in second_prob)
+        real_turns.append(tuple(temp_df['Filename'].values))
     
     first_prob = turns_with_C / total_number_of_turns
-    print "\nFirst probability: ", first_prob
+#     print "\nFirst probability: ", first_prob
     
     # For second probability: converting df to list of tuples
     fake_turns = create_fake_turns(real_turns)
-    print "\nReal: ", real_turns
-    print "\nFake:", fake_turns
+#     print "\nReal: ", real_turns
+#     print "\nFake:", fake_turns
     
     # Need a dictionary to map filenames to C count:
     fn_C_map = dict(zip(liwc_df.Filename, liwc_df.iloc[:,1]))
-    
+#     print fn_C_map
     faketurns_withC = 0.0
     for f1, f2 in fake_turns:
         c1 = fn_C_map[f1]
@@ -95,11 +96,11 @@ def cohesion_value(C, turns, liwc_path):
             faketurns_withC += 1
             
     second_prob = faketurns_withC / total_number_of_turns
-    print "\nSecond probability: ", second_prob
+#     print "\nSecond probability: ", second_prob
     
     cohesion = first_prob - second_prob
     return cohesion
-    
+
     
 # EXAMPLE:
 # turns = [('a hey','an hi'), ('good?', 'yeah I think'), ('the won', 'a india'), ('the bye', 'see you the the')]
