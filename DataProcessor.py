@@ -12,6 +12,8 @@ import scipy
 from scipy.stats import ttest_rel
 import csv
 import liwc_cohesion
+import string
+import re
 class DataProcessor:
 
 
@@ -134,18 +136,25 @@ class DataProcessor:
                         if ("deleted" in par) or ("deleted" in chil):
                             continue
 
+
+                        #if they're the same person
+                        if par in chil:
+                            continue
+
                         if (par, chil) not in comment_tuples:
                             comment_tuples[(par, chil)] = list()
 
                         parent_body = indexed_subreddit_data[parent_id]["body"]
                         child_body = indexed_subreddit_data[id]["body"]
 
+                        regex = re.compile('[^a-zA-Z]')
                         if parent_body is not "" and child_body is not "":
                             parent_body = parent_body.encode('utf-8').strip()
                             child_body = child_body.encode('utf-8').strip()
-                            comment_tuples[(par, chil)].append((parent_body, child_body))
+                            parent_body = regex.sub(' ', parent_body)
+                            child_body = regex.sub(' ', child_body)
+                            comment_tuples[(par, chil)].append([str(parent_body), str(child_body)])
                             total_so_far += 1
-
             self.all_subreddit_comment_tuples[subreddit] = comment_tuples
 
     #should have been decorated. oh well. copy paste is love
@@ -196,6 +205,10 @@ class DataProcessor:
                         if ("deleted" in par) or ("deleted" in chil):
                             continue
 
+                        #if they're the same person
+                        if par in chil:
+                            continue
+
                         if (par, chil) not in comment_tuples:
                             comment_tuples[(par, chil)] = list()
 
@@ -205,7 +218,9 @@ class DataProcessor:
                         if parent_body is not "" and child_body is not "":
                             parent_body = parent_body.encode('utf-8').strip()
                             child_body = child_body.encode('utf-8').strip()
-                            comment_tuples[(par, chil)].append((parent_body, child_body))
+                            parent_body.translate(None, string.punctuation)
+                            child_body.translate(None, string.punctuation)
+                            comment_tuples[(par, chil)].append((str(parent_body), str(child_body)))
                             total_so_far += 1
             self.all_subreddit_comment_tuples[subreddit] = comment_tuples
 
@@ -302,14 +317,36 @@ class DataProcessor:
         for subreddit in self.all_subreddit_comment_tuples:
             just_as_list[subreddit] = []
             for pair in self.all_subreddit_comment_tuples[subreddit]:
-                just_as_list[subreddit].append(self.all_subreddit_comment_tuples[subreddit][pair])
+                for convo in self.all_subreddit_comment_tuples[subreddit][pair]:
+                    just_as_list[subreddit].append(convo)
+
         self.turns = just_as_list
 
     def write_cohesion_to_text(self):
         for subreddit in self.turns:
-            filepath = self.TURNS_DATA_PATH + "subreddit" + str(self.minimum_length) + "_" + subreddit+self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y")+".txt"
-            liwc_cohesion.write_to_txt(filepath, self.turns[subreddit])
+            filepath = self.TURNS_DATA_PATH + "subreddit" + str(self.minimum_length) + "_" + subreddit+self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y") + "/"
+            if not os.path.exists(filepath):
+                os.makedirs(filepath, 0777)
+            liwc_cohesion.write_to_txt(self.turns[subreddit], filepath)
 
+    def get_cohesion_results(self):
+
+        results_dict = {}
+        for subreddit in self.subreddit_list:
+            results_dict[subreddit] = {}
+            liwc_path = "cohesion_results/" + "subreddit" + str(self.minimum_length) + "_" + subreddit+self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y") + ".txt"
+
+            for feature in self.feature_list:
+                cohesion_value = liwc_cohesion.cohesion_value(feature, self.turns[subreddit], liwc_path)
+
+                print subreddit, feature, cohesion_value
+
+
+    def get_changed_context_tuples(self):
+
+
+
+        pass
 
 def main():
 
@@ -318,18 +355,20 @@ def main():
     date2 =datetime.datetime(2016, 12, 30)
 
     #intitial_subreddit_list  = ["Agorism","alltheleft","Anarchism","AnarchistNews","AnarchObjectivism","Anarcho_Capitalism","Anarchy101","BullMooseParty","centrist","christian_ancaps","Classical_Liberals","communism","Conservative","conservatives","CornbreadLiberals","DebateaCommunist","DebateCommunism","democrats","demsocialist","futuristparty","Green_Anarchism","GreenParty","labor","leftcommunism","leninism","Liberal","Libertarian","LibertarianDebates","LibertarianLeft","libertarianmeme","LibertarianSocialism","LibertarianWomen","moderatepolitics","monarchism","neoprogs","NeutralPolitics","new_right","Objectivism","paleoconservative","peoplesparty","PirateParty","progressive","Republican","republicans","SocialDemocracy","socialism","TrueLibertarian","Trueobjectivism","voluntarism"]
-    #test_subreddit_list = ["socialism"]
+    test_subreddit_list = ["Agorism"]
     final_subreddit_list = ["monarchism", "DebateCommunism", "socialism", "SocialDemocracy", "LibertarianSocialism", "conservatives", "GreenParty", "PirateParty", "democrats", "Objectivism", "moderatepolitics", "christian_ancaps", "futuristparty", "DebateaCommunist", "LibertarianDebates", "paleoconservative", "Agorism", "BullMooseParty", "Liberal"]
     dp = DataProcessor(final_subreddit_list, (date1, date2), 100)
     method = "basic_pairs"
     dp.create_tuples(method)
-    #dp.turn_tuples_to_list()
+    dp.turn_tuples_to_list()
+    dp.get_cohesion_results()
+
     #dp.write_cohesion_to_text()
     #need to first initialize self.all_subreddit_comment_tuples!!
     #dp.create_txt_files()
     #need to first have finished LIWC inputs.
-    results_dict = dp.get_accommodation_stats(method)
-    dp.test_accom_cohesion_pearson_correlation(results_dict)
+    #results_dict = dp.get_accommodation_stats(method)
+    #dp.test_accom_cohesion_pearson_correlation(results_dict)
 
 if __name__ == "__main__":
     main()

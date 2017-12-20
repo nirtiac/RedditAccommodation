@@ -55,7 +55,7 @@ def accommodation_dict(dict_input, C, liwc_path):
         if total_number_of_replies < 5:
             continue
         # Selecting the second user (replier i.e. user_pair[1]) and make sure that it's only the current conversation:
-        temp_df_1 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[1]) + '_' + str(conv_index))]
+        temp_df_1 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[1]) + '_' + str(conv_index) + "_")]
         c_values_1 = temp_df_1[C].values
         user2_exhibit_C = np.count_nonzero(c_values_1)
         second_term = user2_exhibit_C / float(total_number_of_replies)
@@ -64,12 +64,12 @@ def accommodation_dict(dict_input, C, liwc_path):
 #         print second_term
 
         ## Calculating First Probability in eq (2) ##
-        temp_df_2 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[0]) + '_' + str(conv_index))]
+        temp_df_2 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[0]) + '_' + str(conv_index) + "_")]
         c_values_2 = temp_df_2[C].values
         user1_exhibit_C = np.count_nonzero(c_values_2)
         
-        df_user2 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[1]) + '_' + str(conv_index))]
-        df_user1 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[0]) + '_' + str(conv_index))]
+        df_user2 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[1]) + '_' + str(conv_index) + "_")]
+        df_user1 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[0]) + '_' + str(conv_index) + "_")]
         df_concat = pd.concat([df_user2, df_user1])
         
         both_users_exhibit_C = 0.0
