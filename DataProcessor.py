@@ -11,22 +11,27 @@ from collections import Counter
 import scipy
 from scipy.stats import ttest_rel
 import csv
+import liwc_cohesion
 class DataProcessor:
+
 
     def __init__(self, subreddit_list, daterange, post_length_limit):
         self.daterange = daterange
         self.subreddit_list = subreddit_list
         self.client = MongoClient()
         self.DATA_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/data/"
-        self.LIWC_RESULTS_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/LIWC_Output_Restricted0/"
-        self.LIWCInputPath = "/home/carmst16/NLP_Final_Project/RedditAccomodation/LIWC_Restr_0_Input/"
+        self.LIWCInputPath = "/home/carmst16/NLP_Final_Project/RedditAccomodation/LIWC_Restr_Length_10/"
+        self.LIWC_RESULTS_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/results_lengh_10/"
         self.db = self.client.reddit
         self.comments = self.db.comms
         self.all_subreddit_comment_tuples = dict()
         self.feature_list = ['pronoun', 'ppron', 'i', 'we', 'you', 'shehe', 'they', 'ipron', 'article', 'prep', 'conj', 'negate', 'quant', 'discrep', 'tentat', 'certain', 'differ', 'Dic']
-        self.results_path = "/home/carmst16/NLP_Final_Project/RedditAccomodation/results0/"
-        self.minimum_lenth = 0
+        self.results_path = "/home/carmst16/NLP_Final_Project/RedditAccomodation/results_length_10_again/"
+        self.minimum_length = 16
         self.maximum_number_of_comments = 1000
+        self.turns = {}
+        self.TURNS_DATA_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/LIWC_TURNS/"
+
     #thanks to https://stackoverflow.com/questions/34964878/python-generate-a-dictionarytree-from-a-list-of-tuples
     def order_comment_threads(self, list_of_ids):
 
@@ -67,7 +72,7 @@ class DataProcessor:
         start = self.daterange[0]
         end = self.daterange[1]
 
-        all_data_file_path = self.DATA_PATH+subreddit+"_"+self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y")+".pkl"
+        all_data_file_path = self.DATA_PATH+subreddit+"_"+ str(self.minimum_length) + "_" +self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y")+".pkl"
 
         print subreddit
         #TODO: This could be really big
@@ -272,6 +277,40 @@ class DataProcessor:
                 for feature in self.feature_list:
                     toPrint = [subreddit, feature] + [x for x in results_dict[subreddit][feature]]
                     csvwriter.writerow(toPrint)
+
+        return results_dict
+
+    def test_accom_cohesion_pearson_correlation(self, results_dict):
+
+        #copy-pasted in I know
+        cohesion_dict = {"Agorism":3.53571, "BullMooseParty":3.37736, "christian_ancaps":4.04762, "conservatives":3.93277, "DebateaCommunist":4.27632, "DebateCommunism":3.70792, "democrats":3.65179, "futuristparty":3.90476, "GreenParty":4.81633, "Liberal":4.32143, "LibertarianDebates":3.62857, "LibertarianSocialism":4.08929, "moderatepolitics":3.50000, "monarchism":4.45468, "Objectivism":3.93878, "paleoconservative":3.78571, "PirateParty":4.02679, "SocialDemocracy":4.22050, "socialism":3.91860, "Trueobjectivism":3.96429}
+
+        x = []
+        y = []
+        for subreddit in cohesion_dict:
+            x.append(cohesion_dict[subreddit])
+            accom_values = [results_dict[x][0] for x in results_dict]
+            print accom_values
+            y.append(sum(accom_values)/float(len(accom_values)))
+
+        coef = scipy.stats.pearsonr(x, y)
+        print coef
+        return coef
+
+    def turn_tuples_to_list(self):
+        just_as_list = {}
+        for subreddit in self.all_subreddit_comment_tuples:
+            just_as_list[subreddit] = []
+            for pair in self.all_subreddit_comment_tuples[subreddit]:
+                just_as_list[subreddit].append(self.all_subreddit_comment_tuples[subreddit][pair])
+        self.turns = just_as_list
+
+    def write_cohesion_to_text(self):
+        for subreddit in self.turns:
+            filepath = self.TURNS_DATA_PATH + "subreddit" + str(self.minimum_length) + "_" + subreddit+self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y")+".txt"
+            liwc_cohesion.write_to_txt(filepath, self.turns[subreddit])
+
+
 def main():
 
     original_umask = os.umask(0)
@@ -284,11 +323,13 @@ def main():
     dp = DataProcessor(final_subreddit_list, (date1, date2), 100)
     method = "basic_pairs"
     dp.create_tuples(method)
+    #dp.turn_tuples_to_list()
+    #dp.write_cohesion_to_text()
     #need to first initialize self.all_subreddit_comment_tuples!!
     #dp.create_txt_files()
     #need to first have finished LIWC inputs.
-    dp.get_accommodation_stats(method)
-
+    results_dict = dp.get_accommodation_stats(method)
+    dp.test_accom_cohesion_pearson_correlation(results_dict)
 
 if __name__ == "__main__":
     main()

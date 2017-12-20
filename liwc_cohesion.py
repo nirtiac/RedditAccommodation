@@ -11,12 +11,12 @@ import random
 - Takes in a list of tuples (reply-pairs)
 - Writes all the turns to .txt files
 '''
-def write_to_txt(turns):
+def write_to_txt(turns, filepath):
     for tup in turns:
         index = turns.index(tup)
-        with open('./try/tuple_'+str(index)+'_person_1.txt', 'wb') as f1:
+        with open(filepath+str(index)+'_person_1.txt', 'wb') as f1:
             f1.write(tup[0])
-        with open('./try/tuple_'+str(index)+'_person_2.txt', 'wb') as f2:
+        with open(filepath+str(index)+'_person_2.txt', 'wb') as f2:
             f2.write(tup[1])
             
             
