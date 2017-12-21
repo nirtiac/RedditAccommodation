@@ -22,15 +22,15 @@ class DataProcessor:
         self.subreddit_list = subreddit_list
         self.client = MongoClient()
         self.DATA_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/data/"
-        self.LIWCInputPath = "/home/carmst16/NLP_Final_Project/RedditAccomodation/LIWC_Restr_Length_10/"
-        self.LIWC_RESULTS_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/results_lengh_10/"
+        self.LIWCInputPath = "/home/carmst16/NLP_Final_Project/RedditAccomodation/LIWC_just_socialism/"
+        self.LIWC_RESULTS_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/LIWC_res_just_socialism"
         self.db = self.client.reddit
         self.comments = self.db.comms
         self.all_subreddit_comment_tuples = dict()
         self.feature_list = ['pronoun', 'ppron', 'i', 'we', 'you', 'shehe', 'they', 'ipron', 'article', 'prep', 'conj', 'negate', 'quant', 'discrep', 'tentat', 'certain', 'differ', 'Dic']
-        self.results_path = "/home/carmst16/NLP_Final_Project/RedditAccomodation/results_length_10_again/"
+        self.results_path = "/home/carmst16/NLP_Final_Project/RedditAccomodation/results_just_socialism/"
         self.minimum_length = 16
-        self.maximum_number_of_comments = 1000
+        self.maximum_number_of_comments = 10000
         self.turns = {}
         self.TURNS_DATA_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/LIWC_TURNS/"
 
@@ -345,7 +345,6 @@ class DataProcessor:
     def get_changed_context_tuples(self):
 
 
-
         pass
 
 def main():
@@ -355,17 +354,17 @@ def main():
     date2 =datetime.datetime(2016, 12, 30)
 
     #intitial_subreddit_list  = ["Agorism","alltheleft","Anarchism","AnarchistNews","AnarchObjectivism","Anarcho_Capitalism","Anarchy101","BullMooseParty","centrist","christian_ancaps","Classical_Liberals","communism","Conservative","conservatives","CornbreadLiberals","DebateaCommunist","DebateCommunism","democrats","demsocialist","futuristparty","Green_Anarchism","GreenParty","labor","leftcommunism","leninism","Liberal","Libertarian","LibertarianDebates","LibertarianLeft","libertarianmeme","LibertarianSocialism","LibertarianWomen","moderatepolitics","monarchism","neoprogs","NeutralPolitics","new_right","Objectivism","paleoconservative","peoplesparty","PirateParty","progressive","Republican","republicans","SocialDemocracy","socialism","TrueLibertarian","Trueobjectivism","voluntarism"]
-    test_subreddit_list = ["Agorism"]
+    test_subreddit_list = ["socialism"]
     final_subreddit_list = ["monarchism", "DebateCommunism", "socialism", "SocialDemocracy", "LibertarianSocialism", "conservatives", "GreenParty", "PirateParty", "democrats", "Objectivism", "moderatepolitics", "christian_ancaps", "futuristparty", "DebateaCommunist", "LibertarianDebates", "paleoconservative", "Agorism", "BullMooseParty", "Liberal"]
-    dp = DataProcessor(final_subreddit_list, (date1, date2), 100)
+    dp = DataProcessor(test_subreddit_list, (date1, date2), 100)
     method = "basic_pairs"
     dp.create_tuples(method)
-    dp.turn_tuples_to_list()
-    dp.get_cohesion_results()
+    #dp.turn_tuples_to_list()
+    #dp.get_cohesion_results()
 
     #dp.write_cohesion_to_text()
     #need to first initialize self.all_subreddit_comment_tuples!!
-    #dp.create_txt_files()
+    dp.create_txt_files()
     #need to first have finished LIWC inputs.
     #results_dict = dp.get_accommodation_stats(method)
     #dp.test_accom_cohesion_pearson_correlation(results_dict)

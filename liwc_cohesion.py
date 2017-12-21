@@ -114,10 +114,8 @@ def cohesion_value(C, turns, liwc_path):
         conv_index = turns.index(tup)
         temp_df = liwc_df.loc[liwc_df.Filename.str.startswith(str(conv_index) +"_person")]
         # Throw an error if there are not 2 rows (because it a reply pair)
+        # no longer throw an error because it just means we had empty text
         if temp_df.shape[0] != 2:
-            print temp_df
-
-            print "ERROR. temp_df should have two rows, but this one doesn't: "
             continue
         c_values = temp_df[C].values
         if 0 not in c_values:
