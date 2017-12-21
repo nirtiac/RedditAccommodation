@@ -12,18 +12,21 @@ userID is to identify a user.
 ConversationIndex is to indentify a thread.
 Index is to identify the comment within a thread.
 '''
-def write_to_txt(dict_input):   
+def write_to_txt(dict_input, file_path):
     conv_index = 0
     for user_pair, conversation in dict_input.items():
         person1 = user_pair[0]
         person2 = user_pair[1]
+        if person1 in person2: #lol
+            continue
         for tup in conversation:
             index = conversation.index(tup)
-            with open('./accom_try/' + str(person1) + '_' + str(conv_index) + '_' + str(index) + '_.txt', 'wb') as f1:
+            with open(file_path + str(person1) + '_' + str(conv_index) + '_' + str(index) + '_.txt', 'wb') as f1:
                 f1.write(tup[0])
-            with open('./accom_try/' + str(person2) + '_' + str(conv_index) + '_' + str(index) + '_.txt', 'wb') as f2:
+            with open(file_path + str(person2) + '_' + str(conv_index) + '_' + str(index) + '_.txt', 'wb') as f2:
                 f2.write(tup[1])
-        
+
+
         conv_index += 1
 
 
@@ -38,19 +41,21 @@ def accommodation_dict(dict_input, C, liwc_path):
     total_rows = liwc_df.shape[0]
 #     print "Total number of rows in dataframe: ", total_rows
     # Throw an error if this number is not even:
-    if total_rows % 2 != 0:
-        print "ERROR. Total number of rows in LIWC dataframe: ", total_rows
-        return None
-    
+    #if total_rows % 2 != 0:
+        #print "ERROR. Total number of rows in LIWC dataframe: ", total_rows
+
     accom = {}
+    accom_terms = {}
     conv_index = 0
     for user_pair, conversation in dict_input.items():
 #         print "Users: ", user_pair
         
         ## Calculating Second Probability in eq (2) ##
         total_number_of_replies = len(conversation)
+        if total_number_of_replies < 5:
+            continue
         # Selecting the second user (replier i.e. user_pair[1]) and make sure that it's only the current conversation:
-        temp_df_1 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[1]) + '_' + str(conv_index))]
+        temp_df_1 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[1]) + '_' + str(conv_index) + "_")]
         c_values_1 = temp_df_1[C].values
         user2_exhibit_C = np.count_nonzero(c_values_1)
         second_term = user2_exhibit_C / float(total_number_of_replies)
@@ -59,36 +64,43 @@ def accommodation_dict(dict_input, C, liwc_path):
 #         print second_term
 
         ## Calculating First Probability in eq (2) ##
-        temp_df_2 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[0]) + '_' + str(conv_index))]
+        temp_df_2 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[0]) + '_' + str(conv_index) + "_")]
         c_values_2 = temp_df_2[C].values
         user1_exhibit_C = np.count_nonzero(c_values_2)
         
-        df_user2 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[1]) + '_' + str(conv_index))]
-        df_user1 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[0]) + '_' + str(conv_index))]
+        df_user2 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[1]) + '_' + str(conv_index) + "_")]
+        df_user1 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[0]) + '_' + str(conv_index) + "_")]
         df_concat = pd.concat([df_user2, df_user1])
         
         both_users_exhibit_C = 0.0
         R = df_concat.shape[0]
-        
+        #print "df_concat", df_concat
+
         for k in range(0, (R/2)):
             temp_concatdf = df_concat.loc[df_concat.Filename.str.endswith('_'+str(k)+'_.txt')]
             # temp_concatdf should be of the shape (2,2):
+            #print temp_concatdf
             if temp_concatdf.shape[0] != 2:
-                print "Error while calculating bothUsersExhibitC."
-                return None
-            
+
+               # print "Error while calculating bothUsersExhibitC."
+                continue
+                #TODO: I changed this from return none to continue
+
             # Both users will exhibit C if 0 is not present in both
             if 0.0 not in temp_concatdf[C].tolist():
                 both_users_exhibit_C += 1
-                
+
+        #TODO: I added this rudimentary smoothing
+        user1_exhibit_C += 1
+        both_users_exhibit_C +=1
         first_term = both_users_exhibit_C / float(user1_exhibit_C)
 #         print first_term
         
         accom[user_pair] = first_term - second_term
+        accom_terms[user_pair] = (first_term, second_term)
 #         print "\n\n"
         conv_index += 1
-    
-    return accom
+    return accom, accom_terms
     
     
 '''
@@ -150,8 +162,8 @@ def calculate_influence_dict(acc_dict):
 
 # EXAMPLE RUN:
 # my = {('user1', 'user2'): [('hi','hello'), ('how are you','good'), ('what else man', 'what do you think')], 
-      ('user3', 'user4'): [('who is the best','we are'), ('you do not say','i will do whatever')],
-      ('user5', 'user2'): [('who is ','you and me'), ('cmon man','yeah let us do this')]}
+#      ('user3', 'user4'): [('who is the best','we are'), ('you do not say','i will do whatever')],
+#      ('user5', 'user2'): [('who is ','you and me'), ('cmon man','yeah let us do this')]}
 # liwc_path = '../../accom_try (14 files)).txt'
 # acc_dict = accommodation_dict(my, 'pronoun', liwc_path)
 # print acc_dict
