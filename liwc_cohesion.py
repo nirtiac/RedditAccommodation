@@ -110,6 +110,7 @@ def cohesion_value(C, turns, liwc_path):
     # List of tuples that I'll pass to create_fake_turns:
     real_turns = []
 
+
     for tup in turns:
         conv_index = turns.index(tup)
         temp_df = liwc_df.loc[liwc_df.Filename.str.startswith(str(conv_index) +"_person")]
