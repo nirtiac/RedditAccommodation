@@ -32,34 +32,40 @@ def write_to_txt(dict_input):
   dimension C; path to liwc output
 - Returns a dictionary where key is user-pair-tuples and value is two-tuple (subtracting these two terms will yield the accommodation value).
 '''
-def accommodation_dict(dict_input, C, liwc_path):
+def accommodation(dict_input, C, liwc_path):
     liwc_df = pd.read_csv(liwc_path, delimiter='\t')[['Filename', C]]
 #     print liwc_df
     total_rows = liwc_df.shape[0]
 #     print "Total number of rows in dataframe: ", total_rows
     # Throw an error if this number is not even:
-    if total_rows % 2 != 0:
-        print "ERROR. Total number of rows in LIWC dataframe: ", total_rows
-        exit(0)
+#    if total_rows % 2 != 0:
+ #       print "ERROR. Total number of rows in LIWC dataframe: ", total_rows
+
     
     accom = {}
+    accom_terms = {}
+
     conv_index = 0
     for user_pair, conversation in dict_input.items():
 #         print "Users: ", user_pair
         
         # Calculating Second Probability: magnitude of C in b's reply / 100*number of replies
         total_number_of_replies = len(conversation)
+
+        if total_number_of_replies < 5:
+            continue
+
         denominator = 100*total_number_of_replies
         
         # Selecting the second user (replier i.e. user_pair[1]) and make sure that it's only the current conversation:
-        temp_df_1 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[1]) + '_' + str(conv_index))]
+        temp_df_1 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[1]) + '_' + str(conv_index) + "_")]
         c_values_1 = temp_df_1[C].values
         user2_exhibit_C = np.sum(c_values_1)
         
         second_term = user2_exhibit_C / float(denominator)
 
         # Calculating First Probability: minimum of magnitude of C in both a's and b's comments / magnitude of C in a's comment
-        temp_df_2 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[0]) + '_' + str(conv_index))]
+        temp_df_2 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[0]) + '_' + str(conv_index) + "_")]
         c_values_2 = temp_df_2[C].values
         user1_exhibit_C = np.sum(c_values_2)
                 
@@ -71,8 +77,8 @@ def accommodation_dict(dict_input, C, liwc_path):
             temp_concatdf = df_concat.loc[df_concat.Filename.str.endswith('_'+str(k)+'_.txt')]
             # temp_concatdf should be of the shape (2,2):
             if temp_concatdf.shape[0] != 2:
-                print "Error while calculating bothUsersExhibitC."
-                exit(0)
+                #print "Error while calculating bothUsersExhibitC."
+                continue
                 
             # Both users will exhibit C if 0 is not present in both
 #             print temp_concatdf[C].tolist()
@@ -80,13 +86,15 @@ def accommodation_dict(dict_input, C, liwc_path):
                 m = np.array(temp_concatdf[C].tolist()).min()
                 both_users_exhibit_C += m
                 
-        
+        user1_exhibit_C += 1
+        both_users_exhibit_C +=1
         first_term = both_users_exhibit_C / float(user1_exhibit_C)
 
-        accom[user_pair] = (first_term, second_term)
+        accom[user_pair] = first_term - second_term
+        accom_terms[user_pair] = (first_term, second_term)
         conv_index += 1
     
-    return accom
+    return accom, accom_terms
 
 '''
 - Takes in the accommodation dictionary of the above function.

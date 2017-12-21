@@ -4,7 +4,6 @@ import pickle
 import pymongo
 import os
 import datetime
-from bson.json_util import dumps
 from pymongo import MongoClient
 import accommodation
 from collections import Counter
@@ -14,6 +13,7 @@ import csv
 import liwc_cohesion
 import string
 import re
+import new_accomm
 class DataProcessor:
 
 
@@ -23,14 +23,14 @@ class DataProcessor:
         self.client = MongoClient()
         self.DATA_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/data/"
         self.LIWCInputPath = "/home/carmst16/NLP_Final_Project/RedditAccomodation/LIWC_just_socialism/"
-        self.LIWC_RESULTS_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/LIWC_res_just_socialism"
+        self.LIWC_RESULTS_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/LIWC_Output_Restricted0/"
         self.db = self.client.reddit
         self.comments = self.db.comms
         self.all_subreddit_comment_tuples = dict()
         self.feature_list = ['pronoun', 'ppron', 'i', 'we', 'you', 'shehe', 'they', 'ipron', 'article', 'prep', 'conj', 'negate', 'quant', 'discrep', 'tentat', 'certain', 'differ', 'Dic']
-        self.results_path = "/home/carmst16/NLP_Final_Project/RedditAccomodation/results_just_socialism/"
-        self.minimum_length = 16
-        self.maximum_number_of_comments = 10000
+        self.results_path = "/home/carmst16/NLP_Final_Project/RedditAccomodation/results_sunyams_thing/"
+        self.minimum_length = 10
+        self.maximum_number_of_comment_pairs = 1000
         self.turns = {}
         self.TURNS_DATA_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/LIWC_TURNS/"
 
@@ -74,7 +74,7 @@ class DataProcessor:
         start = self.daterange[0]
         end = self.daterange[1]
 
-        all_data_file_path = self.DATA_PATH+subreddit+"_"+ str(self.minimum_length) + "_" +self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y")+".pkl"
+        all_data_file_path = self.DATA_PATH+subreddit+ "_" +self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y")+".pkl"
 
         print subreddit
         #TODO: This could be really big
@@ -117,10 +117,10 @@ class DataProcessor:
 
             comment_tuples = dict()
             for link in all_link_ids:
-                if total_so_far > self.maximum_number_of_comments:
+                if total_so_far > self.maximum_number_of_comment_pairs:
                         break
                 for paren_child in all_link_ids[link]:
-                    if total_so_far > self.maximum_number_of_comments:
+                    if total_so_far > self.maximum_number_of_comment_pairs:
                         break
                     id, parent_id = paren_child
                     if (id in indexed_subreddit_data) and (parent_id in indexed_subreddit_data):
@@ -180,18 +180,18 @@ class DataProcessor:
 
             comment_tuples = dict()
             for link in all_link_ids:
-                if total_so_far > self.maximum_number_of_comments:
+                if total_so_far > self.maximum_number_of_comment_pairs:
                         break
                 for paren_child in all_link_ids[link]:
-                    if total_so_far > self.maximum_number_of_comments:
+                    if total_so_far > self.maximum_number_of_comment_pairs:
                         break
 
                     id, parent_id = paren_child
                     if (id in indexed_subreddit_data) and (parent_id in indexed_subreddit_data):
 
-                        if len(indexed_subreddit_data[id]["body"] < self.minimum_lenth):
+                        if len(indexed_subreddit_data[id]["body"]) < self.minimum_length:
                             continue
-                        if len(indexed_subreddit_data[parent_id]["body"] < self.minimum_lenth):
+                        if len(indexed_subreddit_data[parent_id]["body"]) < self.minimum_length:
                             continue
 
                         par = indexed_subreddit_data[parent_id]["author"]
@@ -266,21 +266,21 @@ class DataProcessor:
         return statistic, pvalue
 
     def get_accommodation_stats(self, method):
-
+        print "in accom stats"
         results_dict = {}
         for subreddit in self.subreddit_list:
             results_dict[subreddit] = {}
             liwc_path = self.LIWC_RESULTS_PATH + subreddit+self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y")+".txt"
 
             for feature in self.feature_list:
-                acc_dict, acc_terms = accommodation.accommodation_dict(self.all_subreddit_comment_tuples[subreddit], feature, liwc_path)
+                acc_dict, acc_terms = new_accomm.accommodation(self.all_subreddit_comment_tuples[subreddit], feature, liwc_path)
                 if acc_dict is None:
                     print "no results"
                     continue
                 stat_results = self.two_tailed_paired_t_test(acc_terms)
                 results_dict[subreddit][feature] = (accommodation.dataset_accom(acc_dict), stat_results[0], stat_results[1])
 
-                print subreddit, feature, results_dict[subreddit][feature]
+                #print subreddit, feature, results_dict[subreddit][feature]
                  #print " \t influence", accommodation.influence(acc_dict)
                 #print accommodation.calculate_influence_dict(acc_dict)
 
@@ -298,14 +298,13 @@ class DataProcessor:
     def test_accom_cohesion_pearson_correlation(self, results_dict):
 
         #copy-pasted in I know
-        cohesion_dict = {"Agorism":3.53571, "BullMooseParty":3.37736, "christian_ancaps":4.04762, "conservatives":3.93277, "DebateaCommunist":4.27632, "DebateCommunism":3.70792, "democrats":3.65179, "futuristparty":3.90476, "GreenParty":4.81633, "Liberal":4.32143, "LibertarianDebates":3.62857, "LibertarianSocialism":4.08929, "moderatepolitics":3.50000, "monarchism":4.45468, "Objectivism":3.93878, "paleoconservative":3.78571, "PirateParty":4.02679, "SocialDemocracy":4.22050, "socialism":3.91860, "Trueobjectivism":3.96429}
-
+        cohesion_dict = {"Agorism":3.53571, "BullMooseParty":3.37736, "christian_ancaps":4.04762, "conservatives":3.93277, "DebateaCommunist":4.27632, "DebateCommunism":3.70792, "democrats":3.65179, "futuristparty":3.90476, "GreenParty":4.81633, "Liberal":4.32143, "LibertarianDebates":3.62857, "LibertarianSocialism":4.08929, "moderatepolitics":3.50000, "monarchism":4.45468, "Objectivism":3.93878, "paleoconservative":3.78571, "PirateParty":4.02679, "SocialDemocracy":4.22050, "socialism":3.91860}
+        #cohesion_dict = {"monarchism" : 5}
         x = []
         y = []
-        for subreddit in cohesion_dict:
+        for subreddit in results_dict:
             x.append(cohesion_dict[subreddit])
-            accom_values = [results_dict[x][0] for x in results_dict]
-            print accom_values
+            accom_values = [results_dict[subreddit][i][0] for i in results_dict[subreddit]]
             y.append(sum(accom_values)/float(len(accom_values)))
 
         coef = scipy.stats.pearsonr(x, y)
@@ -354,9 +353,11 @@ def main():
     date2 =datetime.datetime(2016, 12, 30)
 
     #intitial_subreddit_list  = ["Agorism","alltheleft","Anarchism","AnarchistNews","AnarchObjectivism","Anarcho_Capitalism","Anarchy101","BullMooseParty","centrist","christian_ancaps","Classical_Liberals","communism","Conservative","conservatives","CornbreadLiberals","DebateaCommunist","DebateCommunism","democrats","demsocialist","futuristparty","Green_Anarchism","GreenParty","labor","leftcommunism","leninism","Liberal","Libertarian","LibertarianDebates","LibertarianLeft","libertarianmeme","LibertarianSocialism","LibertarianWomen","moderatepolitics","monarchism","neoprogs","NeutralPolitics","new_right","Objectivism","paleoconservative","peoplesparty","PirateParty","progressive","Republican","republicans","SocialDemocracy","socialism","TrueLibertarian","Trueobjectivism","voluntarism"]
-    test_subreddit_list = ["socialism"]
-    final_subreddit_list = ["monarchism", "DebateCommunism", "socialism", "SocialDemocracy", "LibertarianSocialism", "conservatives", "GreenParty", "PirateParty", "democrats", "Objectivism", "moderatepolitics", "christian_ancaps", "futuristparty", "DebateaCommunist", "LibertarianDebates", "paleoconservative", "Agorism", "BullMooseParty", "Liberal"]
-    dp = DataProcessor(test_subreddit_list, (date1, date2), 100)
+    test_subreddit_list = ["monarchism"]
+    final_subreddit_list = ["monarchism", "DebateCommunism", "socialism", "SocialDemocracy", "LibertarianSocialism", "conservatives", "GreenParty", "PirateParty", "democrats", "Objectivism", "moderatepolitics", "christian_ancaps", "futuristparty", "DebateaCommunist", "LibertarianDebates", "paleoconservative",  "BullMooseParty", "Liberal"]
+    pared_subreddit_list = ["monarchism", "DebateCommunism", "socialism", "SocialDemocracy", "conservatives", "GreenParty",  "democrats", "Objectivism", "moderatepolitics", "futuristparty", "DebateaCommunist", "LibertarianDebates", "Liberal"]
+
+    dp = DataProcessor(pared_subreddit_list, (date1, date2), 100)
     method = "basic_pairs"
     dp.create_tuples(method)
     #dp.turn_tuples_to_list()
@@ -364,10 +365,10 @@ def main():
 
     #dp.write_cohesion_to_text()
     #need to first initialize self.all_subreddit_comment_tuples!!
-    dp.create_txt_files()
+    #dp.create_txt_files()
     #need to first have finished LIWC inputs.
-    #results_dict = dp.get_accommodation_stats(method)
-    #dp.test_accom_cohesion_pearson_correlation(results_dict)
+    results_dict = dp.get_accommodation_stats(method)
+    dp.test_accom_cohesion_pearson_correlation(results_dict)
 
 if __name__ == "__main__":
     main()
