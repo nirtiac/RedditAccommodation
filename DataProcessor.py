@@ -23,7 +23,7 @@ class DataProcessor:
         self.client = MongoClient()
         self.DATA_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/data/"
         self.LIWCInputPath = "/home/carmst16/NLP_Final_Project/RedditAccomodation/LIWC_just_socialism/"
-        self.LIWC_RESULTS_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/LIWC_Output_Restricted0/"
+        self.LIWC_RESULTS_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/results_lengh_10/"
         self.db = self.client.reddit
         self.comments = self.db.comms
         self.all_subreddit_comment_tuples = dict()
@@ -273,7 +273,7 @@ class DataProcessor:
             liwc_path = self.LIWC_RESULTS_PATH + subreddit+self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y")+".txt"
 
             for feature in self.feature_list:
-                acc_dict, acc_terms = new_accomm.accommodation(self.all_subreddit_comment_tuples[subreddit], feature, liwc_path)
+                acc_dict, acc_terms = accommodation.accommodation_dict(self.all_subreddit_comment_tuples[subreddit], feature, liwc_path)
                 if acc_dict is None:
                     print "no results"
                     continue
@@ -307,6 +307,8 @@ class DataProcessor:
             accom_values = [results_dict[subreddit][i][0] for i in results_dict[subreddit]]
             y.append(sum(accom_values)/float(len(accom_values)))
 
+        print "cohesion_dict", x
+        print "results_dict", y
         coef = scipy.stats.pearsonr(x, y)
         print coef
         return coef
@@ -357,8 +359,8 @@ def main():
     final_subreddit_list = ["monarchism", "DebateCommunism", "socialism", "SocialDemocracy", "LibertarianSocialism", "conservatives", "GreenParty", "PirateParty", "democrats", "Objectivism", "moderatepolitics", "christian_ancaps", "futuristparty", "DebateaCommunist", "LibertarianDebates", "paleoconservative",  "BullMooseParty", "Liberal"]
     pared_subreddit_list = ["monarchism", "DebateCommunism", "socialism", "SocialDemocracy", "conservatives", "GreenParty",  "democrats", "Objectivism", "moderatepolitics", "futuristparty", "DebateaCommunist", "LibertarianDebates", "Liberal"]
 
-    dp = DataProcessor(pared_subreddit_list, (date1, date2), 100)
-    method = "basic_pairs"
+    dp = DataProcessor(final_subreddit_list, (date1, date2), 100)
+    method = "length_restricted"
     dp.create_tuples(method)
     #dp.turn_tuples_to_list()
     #dp.get_cohesion_results()
