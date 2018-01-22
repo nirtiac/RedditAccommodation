@@ -60,42 +60,20 @@ def write_to_txt_both(dict_tuples, subreddit, filepath):
         with open(filepath+str(subreddit)+'_faketuple_'+str(conv_index)+'_person_2.txt', 'wb') as f2:
             f2.write(tup[1])
 
-def write_to_txt(turns, filepath):
+def write_to_txt(turns, filepath, subreddit):
     for tup in turns:
-        index = turns.index(tup)
-        with open(filepath+str(index)+'_person_1.txt', 'wb') as f1:
+        conv_index = turns.index(tup)
+        with open(filepath+str(subreddit)+str(conv_index)+'_person_1.txt', 'wb') as f1:
             f1.write(tup[0])
-        with open(filepath+str(index)+'_person_2.txt', 'wb') as f2:
+        with open(filepath+str(subreddit)+str(conv_index)+'_person_2.txt', 'wb') as f2:
             f2.write(tup[1])
-
-'''
-- Takes in real turns
-- Returns shuffled fake turns
-'''
-def create_fake_turns(turns):
-    temp1 = []
-    temp2 = []
-    for (p, q) in turns:
-        temp1.append(p)
-        temp2.append(q)
-
-    # Shuffling: Will keep repeating until it gets it right.
-    while True:
-        temp1_ran = random.sample(temp1, len(temp1))
-        temp2_ran = random.sample(temp2, len(temp2))
-        fake_turns = zip(temp1_ran, temp2_ran)
-        # Checking if any of the tuples are still same:
-        p = len(set(turns).intersection(set(fake_turns)))
-        if p == 0:
-            break
-    return fake_turns
 
 
 '''
 - Takes in stylistic dimension C, list of tuples, and path to LIWC output file.
 - Returns Cohesion value.
 '''
-def cohesion_value(C, turns, liwc_path):
+def cohesion_value(C, turns, liwc_path, subreddit):
     liwc_df = pd.read_csv(liwc_path, delimiter='\t')[['Filename', C]]
 
     total_rows = liwc_df.shape[0]
@@ -113,7 +91,7 @@ def cohesion_value(C, turns, liwc_path):
 
     for tup in turns:
         conv_index = turns.index(tup)
-        temp_df = liwc_df.loc[liwc_df.Filename.str.startswith(str(conv_index) +"_person")]
+        temp_df = liwc_df.loc[liwc_df.Filename.str.startswith(str(subreddit)+str(conv_index)+'_person')]
         # Throw an error if there are not 2 rows (because it a reply pair)
         # no longer throw an error because it just means we had empty text
         if temp_df.shape[0] != 2:
