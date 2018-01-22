@@ -51,9 +51,7 @@ def accommodation_dict(dict_input, C, liwc_path):
 #         print "Users: ", user_pair
         
         ## Calculating Second Probability in eq (2) ##
-        total_number_of_replies = len(conversation)
-        if total_number_of_replies < 5:
-            continue
+
         # Selecting the second user (replier i.e. user_pair[1]) and make sure that it's only the current conversation:
         temp_df_1 = liwc_df.loc[liwc_df.Filename.str.startswith(str(user_pair[1]) + '_' + str(conv_index) + "_")]
         c_values_1 = temp_df_1[C].values

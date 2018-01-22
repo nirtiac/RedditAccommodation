@@ -14,23 +14,24 @@ import liwc_cohesion
 import string
 import re
 import new_accomm
+
+
+
+#create a new dataprocessor object everytime you want to work with new subreddits and dates
 class DataProcessor:
 
 
-    def __init__(self, subreddit_list, daterange, post_length_limit):
+    def __init__(self, subreddit_list, daterange, base_path):
         self.daterange = daterange
         self.subreddit_list = subreddit_list
         self.client = MongoClient()
-        self.DATA_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/data/"
-        self.LIWCInputPath = "/home/carmst16/NLP_Final_Project/RedditAccomodation/LIWC_just_socialism/"
-        self.LIWC_RESULTS_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/results_lengh_10/"
         self.db = self.client.reddit
         self.comments = self.db.comms
-        self.all_subreddit_comment_tuples = dict()
-        self.feature_list = ['pronoun', 'ppron', 'i', 'we', 'you', 'shehe', 'they', 'ipron', 'article', 'prep', 'conj', 'negate', 'quant', 'discrep', 'tentat', 'certain', 'differ', 'Dic']
-        self.results_path = "/home/carmst16/NLP_Final_Project/RedditAccomodation/results_sunyams_thing/"
-        self.minimum_length = 10
-        self.maximum_number_of_comment_pairs = 1000
+        self.BASE_PATH = base_path
+        self.DATA_PATH = self.BASE_PATH + "data/"
+        self.FOR_LIWC_INPUT_PATH = self.BASE_PATH + "for_liwc_input/"
+        self.LIWC_OUTPUTED_PATH = self.BASE_PATH + "liwc_outputed_path"
+
         self.turns = {}
         self.TURNS_DATA_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/LIWC_TURNS/"
 
@@ -70,6 +71,7 @@ class DataProcessor:
 
         return nodes
 
+    #returns indexed subreddit data
     def get_subreddit_data(self, subreddit):
         start = self.daterange[0]
         end = self.daterange[1]
@@ -95,8 +97,12 @@ class DataProcessor:
 
         return indexed_subreddit_data
 
-    def get_basic_pairs(self):
+    #returns list of tuples, with restrictions
+    def create_tuples(self, maximum_number_of_comment_pairs, minimum_convo_length = 5, length_restriction = False, minimum_length = 0):
+        all_basic_subreddit_comment_tuples = {}
         for subreddit in self.subreddit_list:
+
+            all_basic_subreddit_comment_tuples[subreddit] = {}
 
             total_so_far = 0
             indexed_subreddit_data = self.get_subreddit_data(subreddit)
@@ -105,7 +111,6 @@ class DataProcessor:
 
             for comment in indexed_subreddit_data:
 
-                #print indexed_subreddit_data[comment]
                 parent_id = indexed_subreddit_data[comment]["parent_id"][3:]
                 link_id = indexed_subreddit_data[comment]["link_id"][3:]
                 id = indexed_subreddit_data[comment]["_id"]
@@ -117,27 +122,28 @@ class DataProcessor:
 
             comment_tuples = dict()
             for link in all_link_ids:
-                if total_so_far > self.maximum_number_of_comment_pairs:
+                if total_so_far > maximum_number_of_comment_pairs:
                         break
                 for paren_child in all_link_ids[link]:
-                    if total_so_far > self.maximum_number_of_comment_pairs:
+                    if total_so_far > maximum_number_of_comment_pairs:
                         break
                     id, parent_id = paren_child
                     if (id in indexed_subreddit_data) and (parent_id in indexed_subreddit_data):
 
+                        if length_restriction:
+                            if len(indexed_subreddit_data[id]["body"]) < minimum_length:
+                                continue
+                            if len(indexed_subreddit_data[parent_id]["body"]) < minimum_length:
+                                continue
+
                         par = indexed_subreddit_data[parent_id]["author"]
                         chil = indexed_subreddit_data[id]["author"]
-
-                        #print par, chil
-                        #print type(par), type(chil)
                         par = par.encode('ascii','ignore')
                         chil = chil.encode('ascii','ignore')
 
                         if ("deleted" in par) or ("deleted" in chil):
                             continue
 
-
-                        #if they're the same person
                         if par in chil:
                             continue
 
@@ -155,96 +161,19 @@ class DataProcessor:
                             child_body = regex.sub(' ', child_body)
                             comment_tuples[(par, chil)].append([str(parent_body), str(child_body)])
                             total_so_far += 1
-            self.all_subreddit_comment_tuples[subreddit] = comment_tuples
 
-    #should have been decorated. oh well. copy paste is love
-    def get_length_restricted_pairs(self):
+            for interac in comment_tuples:
+                if len(comment_tuples[interac]) > minimum_convo_length:
+                    all_basic_subreddit_comment_tuples[subreddit][interac] = comment_tuples[interac]
 
-        for subreddit in self.subreddit_list:
-            total_so_far = 0
-            indexed_subreddit_data = self.get_subreddit_data(subreddit)
-
-            all_link_ids = dict()
-
-            for comment in indexed_subreddit_data:
-
-                #print indexed_subreddit_data[comment]
-                parent_id = indexed_subreddit_data[comment]["parent_id"][3:]
-                link_id = indexed_subreddit_data[comment]["link_id"][3:]
-                id = indexed_subreddit_data[comment]["_id"]
-
-                if link_id not in all_link_ids:
-                    all_link_ids[link_id] = list()
-
-                all_link_ids[link_id].append((id, parent_id))
-
-            comment_tuples = dict()
-            for link in all_link_ids:
-                if total_so_far > self.maximum_number_of_comment_pairs:
-                        break
-                for paren_child in all_link_ids[link]:
-                    if total_so_far > self.maximum_number_of_comment_pairs:
-                        break
-
-                    id, parent_id = paren_child
-                    if (id in indexed_subreddit_data) and (parent_id in indexed_subreddit_data):
-
-                        if len(indexed_subreddit_data[id]["body"]) < self.minimum_length:
-                            continue
-                        if len(indexed_subreddit_data[parent_id]["body"]) < self.minimum_length:
-                            continue
-
-                        par = indexed_subreddit_data[parent_id]["author"]
-                        chil = indexed_subreddit_data[id]["author"]
-
-                        #print par, chil
-                        #print type(par), type(chil)
-                        par = par.encode('ascii','ignore')
-                        chil = chil.encode('ascii','ignore')
-
-                        if ("deleted" in par) or ("deleted" in chil):
-                            continue
-
-                        #if they're the same person
-                        if par in chil:
-                            continue
-
-                        if (par, chil) not in comment_tuples:
-                            comment_tuples[(par, chil)] = list()
-
-                        parent_body = indexed_subreddit_data[parent_id]["body"]
-                        child_body = indexed_subreddit_data[id]["body"]
-
-                        if parent_body is not "" and child_body is not "":
-                            parent_body = parent_body.encode('utf-8').strip()
-                            child_body = child_body.encode('utf-8').strip()
-                            parent_body.translate(None, string.punctuation)
-                            child_body.translate(None, string.punctuation)
-                            comment_tuples[(par, chil)].append((str(parent_body), str(child_body)))
-                            total_so_far += 1
-            self.all_subreddit_comment_tuples[subreddit] = comment_tuples
-
-
-    def create_tuples(self, method):
-
-        if method == "basic_pairs":
-            self.get_basic_pairs()
-
-        if method == "length_restricted":
-            self.get_length_restricted_pairs()
-
-    def get_interactions_list(self):
-        pass
-
-    def create_txt_files(self):
+    def create_txt_files(self, all_subreddit_comment_tuples, maximum_number_of_comment_pairs, minimum_convo_length = 5, length_restriction = False, minimum_length = 0):
 
         for subreddit in self.subreddit_list:
-            file_path = self.LIWCInputPath + subreddit + self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y") + "/"
+            file_path = self.FOR_LIWC_INPUT_PATH + subreddit + self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y") + str(maximum_number_of_comment_pairs) + "_" + str(minimum_convo_length) + str(minimum_length) + "/"
 
             if not os.path.exists(file_path):
-                os.makedirs(file_path, 0777)
 
-            accommodation.write_to_txt(self.all_subreddit_comment_tuples[subreddit], file_path)
+                accommodation.write_to_txt(all_subreddit_comment_tuples[subreddit], file_path)
 
     #for one stylistic dimension
     def two_tailed_paired_t_test(self, acc_terms):
@@ -341,36 +270,3 @@ class DataProcessor:
                 cohesion_value = liwc_cohesion.cohesion_value(feature, self.turns[subreddit], liwc_path)
 
                 print subreddit, feature, cohesion_value
-
-
-    def get_changed_context_tuples(self):
-
-
-        pass
-
-def main():
-
-    original_umask = os.umask(0)
-    date1 = datetime.datetime(2015, 1, 1)
-    date2 =datetime.datetime(2016, 12, 30)
-
-    #intitial_subreddit_list  = ["Agorism","alltheleft","Anarchism","AnarchistNews","AnarchObjectivism","Anarcho_Capitalism","Anarchy101","BullMooseParty","centrist","christian_ancaps","Classical_Liberals","communism","Conservative","conservatives","CornbreadLiberals","DebateaCommunist","DebateCommunism","democrats","demsocialist","futuristparty","Green_Anarchism","GreenParty","labor","leftcommunism","leninism","Liberal","Libertarian","LibertarianDebates","LibertarianLeft","libertarianmeme","LibertarianSocialism","LibertarianWomen","moderatepolitics","monarchism","neoprogs","NeutralPolitics","new_right","Objectivism","paleoconservative","peoplesparty","PirateParty","progressive","Republican","republicans","SocialDemocracy","socialism","TrueLibertarian","Trueobjectivism","voluntarism"]
-    test_subreddit_list = ["monarchism"]
-    final_subreddit_list = ["monarchism", "DebateCommunism", "socialism", "SocialDemocracy", "LibertarianSocialism", "conservatives", "GreenParty", "PirateParty", "democrats", "Objectivism", "moderatepolitics", "christian_ancaps", "futuristparty", "DebateaCommunist", "LibertarianDebates", "paleoconservative",  "BullMooseParty", "Liberal"]
-    pared_subreddit_list = ["monarchism", "DebateCommunism", "socialism", "SocialDemocracy", "conservatives", "GreenParty",  "democrats", "Objectivism", "moderatepolitics", "futuristparty", "DebateaCommunist", "LibertarianDebates", "Liberal"]
-
-    dp = DataProcessor(final_subreddit_list, (date1, date2), 100)
-    method = "length_restricted"
-    dp.create_tuples(method)
-    #dp.turn_tuples_to_list()
-    #dp.get_cohesion_results()
-
-    #dp.write_cohesion_to_text()
-    #need to first initialize self.all_subreddit_comment_tuples!!
-    #dp.create_txt_files()
-    #need to first have finished LIWC inputs.
-    results_dict = dp.get_accommodation_stats(method)
-    dp.test_accom_cohesion_pearson_correlation(results_dict)
-
-if __name__ == "__main__":
-    main()
