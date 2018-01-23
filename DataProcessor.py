@@ -166,13 +166,15 @@ class DataProcessor:
                 if len(comment_tuples[interac]) > minimum_convo_length:
                     all_basic_subreddit_comment_tuples[subreddit][interac] = comment_tuples[interac]
 
+        return all_basic_subreddit_comment_tuples
+    
     def create_txt_files(self, all_subreddit_comment_tuples, maximum_number_of_comment_pairs, minimum_convo_length = 5, length_restriction = False, minimum_length = 0):
 
         for subreddit in self.subreddit_list:
             file_path = self.FOR_LIWC_INPUT_PATH + subreddit + self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y") + str(maximum_number_of_comment_pairs) + "_" + str(minimum_convo_length) + str(minimum_length) + "/"
 
             if not os.path.exists(file_path):
-
+                print subreddit, file_path
                 accommodation.write_to_txt(all_subreddit_comment_tuples[subreddit], file_path)
 
     #for one stylistic dimension
