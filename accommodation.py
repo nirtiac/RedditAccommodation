@@ -18,6 +18,7 @@ def write_to_txt(dict_input, file_path, subreddit_name):
     for user_pair, conversation in dict_input.items():
         person1 = user_pair[0]
         person2 = user_pair[1]
+        print person1, person2
         if person1 in person2: #lol
             continue
         for tup in conversation:
@@ -29,16 +30,10 @@ def write_to_txt(dict_input, file_path, subreddit_name):
 
         conv_index += 1
 
-
-'''
-- Takes in a dictionary where key is user-pair-tuples and value is a list of conversations involving them; stylistic 
-  dimension C; path to liwc output; subreddit name
-- Returns a dictionary where key is user-pair-tuples and value is accommodation for user2 to user1.
-'''
 def accommodation_dict(dict_input, C, liwc_path, subreddit_name):
-    
+
     liwc_df = pd.read_csv(liwc_path, delimiter='\t')[['Filename', C]]
-    
+
     total_rows = liwc_df.shape[0]
 #     print "Total number of rows in dataframe: ", total_rows
     # Throw an error if this number is not even:
@@ -50,7 +45,11 @@ def accommodation_dict(dict_input, C, liwc_path, subreddit_name):
     conv_index = 0
     for user_pair, conversation in dict_input.items():
 #         print "Users: ", user_pair
-        
+
+        ## Calculating Second Probability in eq (2) ##
+        total_number_of_replies = len(conversation)
+        if total_number_of_replies < 5:
+            continue
         # Selecting the second user (replier i.e. user_pair[1]) and make sure that it's only the current conversation:
 
         temp_df_1 = liwc_df.loc[liwc_df.Filename.str.startswith(str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[1]))]
@@ -65,11 +64,11 @@ def accommodation_dict(dict_input, C, liwc_path, subreddit_name):
         temp_df_2 = liwc_df.loc[liwc_df.Filename.str.startswith(str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[0]))]
         c_values_2 = temp_df_2[C].values
         user1_exhibit_C = np.count_nonzero(c_values_2)
-        
+
         df_user2 = liwc_df.loc[liwc_df.Filename.str.startswith(str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[1]))]
         df_user1 = liwc_df.loc[liwc_df.Filename.str.startswith(str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[0]))]
         df_concat = pd.concat([df_user2, df_user1])
-        
+
         both_users_exhibit_C = 0.0
         R = df_concat.shape[0]
         #print "df_concat", df_concat
@@ -93,12 +92,13 @@ def accommodation_dict(dict_input, C, liwc_path, subreddit_name):
         both_users_exhibit_C +=1
         first_term = both_users_exhibit_C / float(user1_exhibit_C)
 #         print first_term
-        
+
         accom[user_pair] = first_term - second_term
         accom_terms[user_pair] = (first_term, second_term)
 #         print "\n\n"
         conv_index += 1
     return accom, accom_terms
+
     
     
 '''

@@ -21,7 +21,7 @@ import new_accomm
 class DataProcessor:
 
 
-    def __init__(self, subreddit_list, daterange, base_path):
+    def __init__(self, subreddit_list, daterange, base_path, feature_list, maximum_number_of_comment_pairs, length_restriction = False, minimum_convo_length = 5, minimum_length = 0):
         self.daterange = daterange
         self.subreddit_list = subreddit_list
         self.client = MongoClient()
@@ -29,10 +29,14 @@ class DataProcessor:
         self.comments = self.db.comms
         self.BASE_PATH = base_path
         self.DATA_PATH = self.BASE_PATH + "data/"
+        self.RESULTS_PATH = self.BASE_PATH + "results/"
         self.FOR_LIWC_INPUT_PATH = self.BASE_PATH + "for_liwc_input/"
-        self.LIWC_OUTPUTED_PATH = self.BASE_PATH + "liwc_outputed_path"
-
+        self.FEATURE_LIST = feature_list
         self.turns = {}
+        self.MAX_PAIRS = maximum_number_of_comment_pairs
+        self.MIN_CONVO_LENGTH = minimum_convo_length
+        self.LENGTH_RESTRICTION = length_restriction
+        self.MIN_STRING_LENGTH = minimum_length
         self.TURNS_DATA_PATH = "/home/carmst16/NLP_Final_Project/RedditAccomodation/LIWC_TURNS/"
 
     #thanks to https://stackoverflow.com/questions/34964878/python-generate-a-dictionarytree-from-a-list-of-tuples
@@ -98,7 +102,7 @@ class DataProcessor:
         return indexed_subreddit_data
 
     #returns list of tuples, with restrictions
-    def create_tuples(self, maximum_number_of_comment_pairs, minimum_convo_length = 5, length_restriction = False, minimum_length = 0):
+    def create_tuples(self, ):
         all_basic_subreddit_comment_tuples = {}
         for subreddit in self.subreddit_list:
 
@@ -122,18 +126,18 @@ class DataProcessor:
 
             comment_tuples = dict()
             for link in all_link_ids:
-                if total_so_far > maximum_number_of_comment_pairs:
+                if total_so_far > self.MAX_PAIRS:
                         break
                 for paren_child in all_link_ids[link]:
-                    if total_so_far > maximum_number_of_comment_pairs:
+                    if total_so_far > self.MAX_PAIRS:
                         break
                     id, parent_id = paren_child
                     if (id in indexed_subreddit_data) and (parent_id in indexed_subreddit_data):
 
-                        if length_restriction:
-                            if len(indexed_subreddit_data[id]["body"]) < minimum_length:
+                        if self.LENGTH_RESTRICTION:
+                            if len(indexed_subreddit_data[id]["body"]) < self.MIN_STRING_LENGTH:
                                 continue
-                            if len(indexed_subreddit_data[parent_id]["body"]) < minimum_length:
+                            if len(indexed_subreddit_data[parent_id]["body"]) < self.MIN_STRING_LENGTH:
                                 continue
 
                         par = indexed_subreddit_data[parent_id]["author"]
@@ -162,20 +166,23 @@ class DataProcessor:
                             comment_tuples[(par, chil)].append([str(parent_body), str(child_body)])
                             total_so_far += 1
 
+            print subreddit, total_so_far
+
             for interac in comment_tuples:
-                if len(comment_tuples[interac]) > minimum_convo_length:
+                if len(comment_tuples[interac]) > self.MIN_CONVO_LENGTH:
                     all_basic_subreddit_comment_tuples[subreddit][interac] = comment_tuples[interac]
 
         return all_basic_subreddit_comment_tuples
     
-    def create_txt_files(self, all_subreddit_comment_tuples, maximum_number_of_comment_pairs, minimum_convo_length = 5, length_restriction = False, minimum_length = 0):
-
+    def create_txt_files(self):
+        all_basic_subreddit_comment_tuples = self. create_tuples()
         for subreddit in self.subreddit_list:
-            file_path = self.FOR_LIWC_INPUT_PATH + subreddit + self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y") + str(maximum_number_of_comment_pairs) + "_" + str(minimum_convo_length) + str(minimum_length) + "/"
+            file_path = self.FOR_LIWC_INPUT_PATH + self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y") + "_" + str(self.MAX_PAIRS) + "_" + str(self.MIN_CONVO_LENGTH) + "_" + str(self.MIN_STRING_LENGTH) + "_"
 
             if not os.path.exists(file_path):
-                print subreddit, file_path
-                accommodation.write_to_txt(all_subreddit_comment_tuples[subreddit], file_path)
+                os.makedirs(file_path, 0777)
+
+            accommodation.write_to_txt(all_basic_subreddit_comment_tuples[subreddit], file_path, subreddit)
 
     #for one stylistic dimension
     def two_tailed_paired_t_test(self, acc_terms):
@@ -196,18 +203,18 @@ class DataProcessor:
 
         return statistic, pvalue
 
-    def get_accommodation_stats(self, method):
-        print "in accom stats"
+    def get_accommodation_stats(self, tuples, liwc_results_file):
         results_dict = {}
         for subreddit in self.subreddit_list:
             results_dict[subreddit] = {}
-            liwc_path = self.LIWC_RESULTS_PATH + subreddit+self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y")+".txt"
+            liwc_path = liwc_results_file
 
-            for feature in self.feature_list:
-                acc_dict, acc_terms = accommodation.accommodation_dict(self.all_subreddit_comment_tuples[subreddit], feature, liwc_path)
+            for feature in self.FEATURE_LIST:
+                acc_dict, acc_terms = accommodation.accommodation_dict(tuples[subreddit], feature, liwc_path, subreddit)
                 if acc_dict is None:
                     print "no results"
                     continue
+                print acc_dict
                 stat_results = self.two_tailed_paired_t_test(acc_terms)
                 results_dict[subreddit][feature] = (accommodation.dataset_accom(acc_dict), stat_results[0], stat_results[1])
 
@@ -215,26 +222,26 @@ class DataProcessor:
                  #print " \t influence", accommodation.influence(acc_dict)
                 #print accommodation.calculate_influence_dict(acc_dict)
 
-        filename = self.results_path + "accom_stats_"+ method+ "_" + self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y")+".csv"
+        filename = self.RESULTS_PATH + "accom_stats_"+self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y") + "_" + str(self.MAX_PAIRS) + "_" + str(self.MIN_CONVO_LENGTH) + "_" + str(self.MIN_STRING_LENGTH) +".csv"
         with open(filename, 'wb') as csvfile:
             csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
             csvwriter.writerow(["subreddit", "feature", "accom_value", "statistic", "pvalue"])
             for subreddit in self.subreddit_list:
-                for feature in self.feature_list:
+                for feature in self.FEATURE_LIST:
                     toPrint = [subreddit, feature] + [x for x in results_dict[subreddit][feature]]
                     csvwriter.writerow(toPrint)
 
         return results_dict
 
-    def test_accom_cohesion_pearson_correlation(self, results_dict):
+    def test_accom_cohesion_pearson_correlation(self, results_dict, cohesion_results):
 
         #copy-pasted in I know
-        cohesion_dict = {"Agorism":3.53571, "BullMooseParty":3.37736, "christian_ancaps":4.04762, "conservatives":3.93277, "DebateaCommunist":4.27632, "DebateCommunism":3.70792, "democrats":3.65179, "futuristparty":3.90476, "GreenParty":4.81633, "Liberal":4.32143, "LibertarianDebates":3.62857, "LibertarianSocialism":4.08929, "moderatepolitics":3.50000, "monarchism":4.45468, "Objectivism":3.93878, "paleoconservative":3.78571, "PirateParty":4.02679, "SocialDemocracy":4.22050, "socialism":3.91860}
+        #cohesion_dict = {"Agorism":3.53571, "BullMooseParty":3.37736, "christian_ancaps":4.04762, "conservatives":3.93277, "DebateaCommunist":4.27632, "DebateCommunism":3.70792, "democrats":3.65179, "futuristparty":3.90476, "GreenParty":4.81633, "Liberal":4.32143, "LibertarianDebates":3.62857, "LibertarianSocialism":4.08929, "moderatepolitics":3.50000, "monarchism":4.45468, "Objectivism":3.93878, "paleoconservative":3.78571, "PirateParty":4.02679, "SocialDemocracy":4.22050, "socialism":3.91860}
         #cohesion_dict = {"monarchism" : 5}
         x = []
         y = []
         for subreddit in results_dict:
-            x.append(cohesion_dict[subreddit])
+            x.append(cohesion_results[subreddit])
             accom_values = [results_dict[subreddit][i][0] for i in results_dict[subreddit]]
             y.append(sum(accom_values)/float(len(accom_values)))
 
@@ -256,7 +263,7 @@ class DataProcessor:
 
     def write_cohesion_to_text(self):
         for subreddit in self.turns:
-            filepath = self.TURNS_DATA_PATH + "subreddit" + str(self.minimum_length) + "_" + subreddit+self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y") + "/"
+            filepath = self.TURNS_DATA_PATH + "subreddit" + str(self.MIN_STRING_LENGTH) + "_" + subreddit+self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y") + "/"
             if not os.path.exists(filepath):
                 os.makedirs(filepath, 0777)
             liwc_cohesion.write_to_txt(self.turns[subreddit], filepath)
@@ -266,7 +273,7 @@ class DataProcessor:
         results_dict = {}
         for subreddit in self.subreddit_list:
             results_dict[subreddit] = {}
-            liwc_path = "cohesion_results/" + "subreddit" + str(self.minimum_length) + "_" + subreddit+self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y") + ".txt"
+            liwc_path = "cohesion_results/" + "subreddit" + str(self.MIN_STRING_LENGTH) + "_" + subreddit+self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y") + ".txt"
 
             for feature in self.feature_list:
                 cohesion_value = liwc_cohesion.cohesion_value(feature, self.turns[subreddit], liwc_path)
