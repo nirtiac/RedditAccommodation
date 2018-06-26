@@ -12,7 +12,7 @@ class RunExperiments:
         self.base_path = "/home/carmst16/NLP_Final_Project/"
         self.maximum_number_of_comment_pairs = 1200
         self.feature_list = ['pronoun', 'ppron', 'i', 'we', 'you', 'shehe', 'they', 'ipron', 'article', 'prep', 'conj', 'negate', 'quant', 'discrep', 'tentat', 'certain', 'differ', 'Dic']
-
+        self.minimum_convo_length = 2
 #No length restriction
     def experimentOnePreLIWC(self):
 
@@ -50,7 +50,7 @@ def main():
     #intitial_subreddit_list  = ["Agorism","alltheleft","Anarchism","AnarchistNews","AnarchObjectivism","Anarcho_Capitalism","Anarchy101","BullMooseParty","centrist","christian_ancaps","Classical_Liberals","communism","Conservative","conservatives","CornbreadLiberals","DebateaCommunist","DebateCommunism","democrats","demsocialist","futuristparty","Green_Anarchism","GreenParty","labor","leftcommunism","leninism","Liberal","Libertarian","LibertarianDebates","LibertarianLeft","libertarianmeme","LibertarianSocialism","LibertarianWomen","moderatepolitics","monarchism","neoprogs","NeutralPolitics","new_right","Objectivism","paleoconservative","peoplesparty","PirateParty","progressive","Republican","republicans","SocialDemocracy","socialism","TrueLibertarian","Trueobjectivism","voluntarism"]
     #final_subreddit_list = ["monarchism", "DebateCommunism", "socialism", "SocialDemocracy", "LibertarianSocialism", "conservatives", "GreenParty", "PirateParty", "democrats", "Objectivism", "moderatepolitics", "christian_ancaps", "futuristparty", "DebateaCommunist", "LibertarianDebates", "paleoconservative",  "BullMooseParty", "Liberal"]
 
-    Runner = RunExperiments([""])
+    Runner = RunExperiments(["socialism"])
     Runner.experimentOnePostLIWC("/home/carmst16/NLP_Final_Project/cur_test_results.txt")
 
 

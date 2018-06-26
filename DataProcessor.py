@@ -13,7 +13,6 @@ import csv
 import liwc_cohesion
 import string
 import re
-import new_accomm
 
 
 
@@ -21,10 +20,10 @@ import new_accomm
 class DataProcessor:
 
 
-    def __init__(self, subreddit_list, daterange, base_path, feature_list, maximum_number_of_comment_pairs, length_restriction = False, minimum_convo_length = 5, minimum_length = 0):
+    def __init__(self, subreddit_list, daterange, base_path, feature_list, maximum_number_of_comment_pairs, length_restriction = False, minimum_convo_length = 2, minimum_length = 0):
         self.daterange = daterange
         self.subreddit_list = subreddit_list
-        self.client = MongoClient()
+        self.client = MongoClient(serverSelectionTimeoutMS=10,  connectTimeoutMS=20000)
         self.db = self.client.reddit
         self.comments = self.db.comms
         self.BASE_PATH = base_path
@@ -77,33 +76,33 @@ class DataProcessor:
 
     #returns indexed subreddit data
     def get_subreddit_data(self, subreddit):
+
+
         start = self.daterange[0]
         end = self.daterange[1]
 
         all_data_file_path = self.DATA_PATH+subreddit+ "_" +self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y")+".pkl"
 
-        print subreddit
         #TODO: This could be really big
         if os.path.exists(all_data_file_path):
             print "yay we have it"
             indexed_subreddit_data = pickle.load(open(all_data_file_path, "r"))
+
         else:
             print "didn't already have it :("
-            count = self.comments.find({"subreddit" : subreddit, 'created_time': {'$gte': start, '$lt': end}}).count()
-            print "retrieving " + str(count) + " documents"
             subreddit_data = list(self.comments.find({"subreddit" : subreddit, 'created_time': {'$gte': start, '$lt': end}},{"body" : 1, "parent_id" : 1, "link_id" :1, "author" :1}))
-
             indexed_subreddit_data = dict()
             for comment in subreddit_data:
                 indexed_subreddit_data[comment["_id"]] = comment
 
             pickle.dump(indexed_subreddit_data, open(all_data_file_path, "w"))
-
         return indexed_subreddit_data
 
     #returns list of tuples, with restrictions
-    def create_tuples(self, ):
+    def create_tuples(self):
         all_basic_subreddit_comment_tuples = {}
+
+
         for subreddit in self.subreddit_list:
 
             all_basic_subreddit_comment_tuples[subreddit] = {}
@@ -166,12 +165,10 @@ class DataProcessor:
                             comment_tuples[(par, chil)].append([str(parent_body), str(child_body)])
                             total_so_far += 1
 
-            print subreddit, total_so_far
 
             for interac in comment_tuples:
                 if len(comment_tuples[interac]) > self.MIN_CONVO_LENGTH:
                     all_basic_subreddit_comment_tuples[subreddit][interac] = comment_tuples[interac]
-
         return all_basic_subreddit_comment_tuples
     
     def create_txt_files(self):
@@ -186,7 +183,6 @@ class DataProcessor:
 
     #for one stylistic dimension
     def two_tailed_paired_t_test(self, acc_terms):
-
         #"in order to allay concerns regarding the independence assumption of the test, for each two users a and b we only consider one of the two possible ordered pairs"
         already_passed_couples = []
         first_term_list = []
@@ -212,9 +208,7 @@ class DataProcessor:
             for feature in self.FEATURE_LIST:
                 acc_dict, acc_terms = accommodation.accommodation_dict(tuples[subreddit], feature, liwc_path, subreddit)
                 if acc_dict is None:
-                    print "no results"
                     continue
-                print acc_dict
                 stat_results = self.two_tailed_paired_t_test(acc_terms)
                 results_dict[subreddit][feature] = (accommodation.dataset_accom(acc_dict), stat_results[0], stat_results[1])
 
@@ -230,7 +224,7 @@ class DataProcessor:
                 for feature in self.FEATURE_LIST:
                     toPrint = [subreddit, feature] + [x for x in results_dict[subreddit][feature]]
                     csvwriter.writerow(toPrint)
-
+        print "RESULTS DICT", results_dict
         return results_dict
 
     def test_accom_cohesion_pearson_correlation(self, results_dict, cohesion_results):
@@ -245,10 +239,7 @@ class DataProcessor:
             accom_values = [results_dict[subreddit][i][0] for i in results_dict[subreddit]]
             y.append(sum(accom_values)/float(len(accom_values)))
 
-        print "cohesion_dict", x
-        print "results_dict", y
         coef = scipy.stats.pearsonr(x, y)
-        print coef
         return coef
 
     def turn_tuples_to_list(self):

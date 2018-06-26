@@ -18,7 +18,7 @@ def write_to_txt(dict_input, file_path, subreddit_name):
     for user_pair, conversation in dict_input.items():
         person1 = user_pair[0]
         person2 = user_pair[1]
-        print person1, person2
+        #print person1, person2
         if person1 in person2: #lol
             continue
         for tup in conversation:
@@ -33,7 +33,6 @@ def write_to_txt(dict_input, file_path, subreddit_name):
 def accommodation_dict(dict_input, C, liwc_path, subreddit_name):
 
     liwc_df = pd.read_csv(liwc_path, delimiter='\t')[['Filename', C]]
-
     total_rows = liwc_df.shape[0]
 #     print "Total number of rows in dataframe: ", total_rows
     # Throw an error if this number is not even:
@@ -48,11 +47,11 @@ def accommodation_dict(dict_input, C, liwc_path, subreddit_name):
 
         ## Calculating Second Probability in eq (2) ##
         total_number_of_replies = len(conversation)
-        if total_number_of_replies < 5:
+        if total_number_of_replies < 2: #TODO: my god make this a variable and also make it longer
             continue
         # Selecting the second user (replier i.e. user_pair[1]) and make sure that it's only the current conversation:
-
-        temp_df_1 = liwc_df.loc[liwc_df.Filename.str.startswith(str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[1]))]
+        #TODO: DONT HARD CODE THIS FOR FUCKS SAKE JUST A TEST
+        temp_df_1 = liwc_df.loc[liwc_df.Filename.str.startswith("April30_2016_April30_2017_1200_1_0_" +str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[1]))]
         c_values_1 = temp_df_1[C].values
         user2_exhibit_C = np.count_nonzero(c_values_1)
         second_term = user2_exhibit_C / float(total_number_of_replies)
