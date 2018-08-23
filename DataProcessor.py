@@ -31,7 +31,7 @@ class DataProcessor:
         self.MIN_CONVO_LENGTH = minimum_convo_length
         self.LENGTH_RESTRICTION = length_restriction
         self.MIN_STRING_LENGTH = minimum_length
-        self.TURNS_DATA_PATH = self.BASE_PATH + "POLITICS_LIWC_TURNS/"
+        self.TURNS_DATA_PATH = self.BASE_PATH + "ALL_LIWC_TURNS/"
         self.pair_conv_str = self.daterange[0].strftime("%B%d_%Y")+"_"+ self.daterange[1].strftime("%B%d_%Y") + "_" + str(self.MAX_PAIRS) + "_" + str(self.MIN_CONVO_LENGTH) + "_" + str(self.MIN_STRING_LENGTH) + "_"
 
     #thanks to https://stackoverflow.com/questions/34964878/python-generate-a-dictionarytree-from-a-list-of-tuples
@@ -82,7 +82,7 @@ class DataProcessor:
 
         else:
             print "Didn't already have it :("
-            subreddit_data = list(comments.find({"subreddit":subreddit, 'created_time':{'$gte':start, '$lt':end}}, {"created_time":1, "body":1, "parent_id":1, "link_id":1, "author":1, "score":1}))
+            subreddit_data = list(self.comments.find({"subreddit":subreddit, 'created_time':{'$gte':start, '$lt':end}}, {"created_time":1, "body":1, "parent_id":1, "link_id":1, "author":1, "score":1}))
             indexed_subreddit_data = dict()
             for comment in subreddit_data:
                 indexed_subreddit_data[comment["_id"]] = comment
@@ -95,7 +95,7 @@ class DataProcessor:
         The output is a dictionary. Key is the subreddit-name; Value is a dictionary itself.
         That inner dictionary's Key is a ('user1', 'user2') tuple; Value is a list lists (basically a list of threads in that subreddit.) The inner list always has two elements/strings in it.
     '''
-    def create_tuples(self):
+    def create_tuples(self, remove_deleted_users):
         all_basic_subreddit_comment_tuples = {}
 
 
@@ -140,11 +140,13 @@ class DataProcessor:
                         par = par.encode('ascii','ignore')
                         chil = chil.encode('ascii','ignore')
 
-                        if ("deleted" in par) or ("deleted" in chil):
-                            continue
+                        # Deleted users filter:
+                        if remove_deleted_users:
+                            if ("deleted" in par) or ("deleted" in chil):
+                                continue
 
-                        if par in chil:
-                            continue
+                            if par in chil:
+                                continue
 
                         if (par, chil) not in comment_tuples:
                             comment_tuples[(par, chil)] = list()
@@ -281,15 +283,20 @@ class DataProcessor:
 #                print subreddit, feature, cohesion_value
                 results_dict[subreddit][feature] = (cohesion_value, oddsratio, pvalue, first_den)
 
-        with open('./political-cohesion-result-dict.pickle', 'wb') as f:
+        with open('./HighAssortLarge-cohesion-result-dict.pickle', 'wb') as f:
             pickle.dump(results_dict, f)
 
         # Writing the resuts to a CSV:
-        filename = self.RESULTS_PATH + "COHESION_Political_stats_" + self.daterange[0].strftime("%B%d_%Y")+"_" + self.daterange[1].strftime("%B%d_%Y") + ".csv"
+        filename = self.RESULTS_PATH + "COHESION_HighAssortLarge_stats_" + self.daterange[0].strftime("%B%d_%Y")+"_" + self.daterange[1].strftime("%B%d_%Y") + ".csv"
         with open(filename, 'wb') as csvfile:
             csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
             csvwriter.writerow(["subreddit", "feature", "cohesion_value", "oddsratio", "pvalue", "number_of_turns"])
             for subreddit in self.subreddit_list:
+
+                if self.turns[subreddit] == []:
+                    print "EMPTY: ", subreddit
+                    continue
+                
                 for feature in self.FEATURE_LIST:
                     toPrint = [subreddit, feature] + [x for x in results_dict[subreddit][feature]]
                     csvwriter.writerow(toPrint)
@@ -300,10 +307,13 @@ class DataProcessor:
 
 
 # For Hockey:
-subreddit_list = ['CollegeRepublicans', 'EuropeanFederalists', 'Postleftanarchism', 'collapse', 'LateStageCapitalism', 'AnaheimDucks', 'Coyotes', 'BostonBruins', 'sabres', 'CalgaryFlames', 'canes', 'hawks', 'ColoradoAvalanche', 'BlueJackets', 'DallasStars', 'DetroitRedWings', 'EdmontonOilers', 'FloridaPanthers', 'losangeleskings', 'wildhockey', 'Habs', 'Predators', 'devils', 'NewYorkIslanders', 'rangers', 'OttawaSenators', 'Flyers', 'penguins', 'SanJoseSharks', 'stlouisblues', 'TampaBayLightning', 'leafs', 'canucks', 'goldenknights', 'caps', 'winnipegjets']
+#subreddit_list = ['CollegeRepublicans', 'EuropeanFederalists', 'Postleftanarchism', 'collapse', 'LateStageCapitalism', 'AnaheimDucks', 'Coyotes', 'BostonBruins', 'sabres', 'CalgaryFlames', 'canes', 'hawks', 'ColoradoAvalanche', 'BlueJackets', 'DallasStars', 'DetroitRedWings', 'EdmontonOilers', 'FloridaPanthers', 'losangeleskings', 'wildhockey', 'Habs', 'Predators', 'devils', 'NewYorkIslanders', 'rangers', 'OttawaSenators', 'Flyers', 'penguins', 'SanJoseSharks', 'stlouisblues', 'TampaBayLightning', 'leafs', 'canucks', 'goldenknights', 'caps', 'winnipegjets']
 
 # For politics:
 #subreddit_list = ['Agorism', 'alltheleft', 'Anarchism', 'AnarchistNews', 'AnarchObjectivism', 'Anarcho_Capitalism', 'Anarchy101', 'BullMooseParty', 'centrist', 'christian_ancaps', 'Classical_Liberals', 'communism', 'Conservative', 'conservatives', 'CornbreadLiberals', 'DebateaCommunist', 'DebateCommunism', 'democrats', 'demsocialist','futuristparty', 'Green_Anarchism', 'GreenParty', 'labor', 'leftcommunism', 'leninism', 'Liberal', 'Libertarian', 'LibertarianDebates', 'LibertarianLeft', 'libertarianmeme', 'LibertarianSocialism', 'LibertarianWomen', 'moderatepolitics', 'monarchism', 'neoprogs', 'NeutralPolitics', 'new_right', 'Objectivism', 'paleoconservative', 'peoplesparty', 'PirateParty', 'progressive', 'Republican', 'republicans', 'SocialDemocracy', 'socialism', 'TrueLibertarian', 'Trueobjectivism', 'voluntarism']
+
+# Others:
+subreddit_list = ['CrazyIdeas', 'nsfw2', 'place', 'MuseumOfReddit', 'O_Faces', 'KidsAreFuckingStupid', 'SexInFrontOfOthers', 'humor', 'CollegeAmateurs', 'cursedimages', 'gettingherselfoff', 'BonerMaterial', 'montageparodies', 'suicidegirls', 'compsci', 'Nicegirls', 'SpecArt', 'goddesses', 'gif', 'tippytaps'] #, 'legaladvice', 'buildapc', 'SketchDaily', 'photography', 'gonewildcurvy', 'nflstreams', 'apolloapp', 'soccerstreams', 'shortscarystories', 'de_IAmA', 'gonewildcolor', 'headphones', 'GoneWildTube', 'AsiansGoneWild', 'GoneWildSmiles', 'astrophotography', 'Gonewild18', 'NSFW411', 'GWNerdy', 'baconreader', 'altgonewild', 'userbattles', 'anachronism', 'GapingGuys', 'instrumentalmusic', 'bikepaths', 'forex_trades', 'behavior', 'dapps', 'Animism', 'MusicProducerSpot', 'tshirtdesigns', 'Latina_best', 'hotwifeUK', 'AngelinaValentine', 'Mushroom_Cultivation', 'work_in_progress', 'historyincolor', 'java101', 'relationship_guidance', 'MAABMakeup', 'dribbble', 'crackpack', 'musicanova', 'Vivian_Rose', 'carsatan', 'SpaceXNow', 'FMExposed', 'SexySubs', 'TheSexualDragon', 'HistoryQuotes', 'GayBeards', 'TheLustFrontier', 'SadDads', 'BubblesGW', 'ElectionPolls', 'paradigmchange', 'barelyinteresting', 'Shhhnsfw24', 'jm_delphi', 'BustyKhaleesi', 'SosAndTheTiny', 'Emma_Mason', 'europeannationalism', 'NationalSocialism', 'WeissSturm', 'Physical_Removal', 'DebateAltRight', 'WhiteRights', 'The_Donald', 'uncensorednews', 'sjwhate', 'incels', 'KotakuInAction', 'TumblrInAction', 'PussyPassDenied', 'CringeAnarchy', 'conspiracy', 'TheRedPill', 'Drama', 'watchpeopledie', 'MGTOW', 'aznidentity', 'ShitPoliticsSays', 'Coontown', 'fatpeoplehate', 'TheGirlSurvivalGuide', 'ForeverAlone', 'ChangeMyView', 'TwoXChromosomes', 'depression', 'Anxiety', 'CasualConversation', 'RandomKindness', 'fountainpens', 'knitting', 'Buddhism', 'ABraThatFits', 'loseit', 'history']
 date1 = datetime.datetime(2016, 4, 30)
 date2 = datetime.datetime(2017, 4, 30)
 daterange = (date1, date2)
@@ -314,16 +324,18 @@ feature_list = ['pronoun', 'ppron', 'i', 'we', 'you', 'shehe', 'they', 'ipron', 
 base_path = '/home/sbagga1/Reddit-Accommodation/'
 
 # FOR COHESION:
+remove_deleted_users = False
 dp = DataProcessor(subreddit_list, (date1, date2), base_path, feature_list, maximum_number_of_comment_pairs)
 
 # PRE-LIWC:
-#tuples = dp.create_tuples()
-#dp.turn_tuples_to_list(tuples)
-#dp.write_cohesion_to_text()
+tuples = dp.create_tuples(keep_deleted_users)
+dp.turn_tuples_to_list(tuples)
+dp.write_cohesion_to_text()
 
 # POST-LIWC:
 #liwc_results_file = '../POLITICS_LIWC_TURNS_22302_files.txt'
-liwc_results_file = '../HockeyCohesion-Results-11066files.txt'
-tuples = dp.create_tuples()
-dp.turn_tuples_to_list(tuples)
-dp.get_cohesion_results(liwc_results_file)
+#liwc_results_file = '../HockeyCohesion-Results-11066files.txt'
+#liwc_results_file = '../Results_ALL_LIWC_TURNS_2026files.txt'
+#tuples = dp.create_tuples()
+#dp.turn_tuples_to_list(tuples)
+#dp.get_cohesion_results(liwc_results_file)
