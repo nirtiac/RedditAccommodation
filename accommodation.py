@@ -13,8 +13,12 @@ ConversationIndex is to indentify a thread.
 Index is to identify the comment within a thread.
 subredditName is to identify the subreddit.
 '''
-def write_to_txt(dict_input, file_path, subreddit_name):
+def write_to_txt(dict_input, file_path_half, pair_conv_str, subreddit_name):
+
+    file_path = file_path_half + pair_conv_str
+
     conv_index = 0
+
     for user_pair, conversation in dict_input.items():
         person1 = user_pair[0]
         person2 = user_pair[1]
@@ -30,9 +34,10 @@ def write_to_txt(dict_input, file_path, subreddit_name):
 
         conv_index += 1
 
-def accommodation_dict(dict_input, C, liwc_path, subreddit_name):
+def accommodation_dict(dict_input, C, liwc_path, subreddit_name, pair_conv_str):
 
     liwc_df = pd.read_csv(liwc_path, delimiter='\t')[['Filename', C]]
+
     total_rows = liwc_df.shape[0]
 #     print "Total number of rows in dataframe: ", total_rows
     # Throw an error if this number is not even:
@@ -47,11 +52,15 @@ def accommodation_dict(dict_input, C, liwc_path, subreddit_name):
 
         ## Calculating Second Probability in eq (2) ##
         total_number_of_replies = len(conversation)
-        if total_number_of_replies < 2: #TODO: my god make this a variable and also make it longer
+
+        # Check to make sure the denom is not too small
+        if total_number_of_replies < 4:
+            print "Skipping cuz second-term-denom: ", total_number_of_replies
             continue
-        # Selecting the second user (replier i.e. user_pair[1]) and make sure that it's only the current conversation:
-        #TODO: DONT HARD CODE THIS FOR FUCKS SAKE JUST A TEST
-        temp_df_1 = liwc_df.loc[liwc_df.Filename.str.startswith("April30_2016_April30_2017_1200_1_0_" +str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[1]))]
+
+       	# Selecting the second user (replier i.e. user_pair[1]) and make sure that it's only the current conversation:
+
+        temp_df_1 = liwc_df.loc[liwc_df.Filename.str.startswith(pair_conv_str + str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[1]))]
         c_values_1 = temp_df_1[C].values
         user2_exhibit_C = np.count_nonzero(c_values_1)
         second_term = user2_exhibit_C / float(total_number_of_replies)
@@ -60,12 +69,12 @@ def accommodation_dict(dict_input, C, liwc_path, subreddit_name):
 #         print second_term
 
         ## Calculating First Probability in eq (2) ##
-        temp_df_2 = liwc_df.loc[liwc_df.Filename.str.startswith(str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[0]))]
+        temp_df_2 = liwc_df.loc[liwc_df.Filename.str.startswith(pair_conv_str + str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[0]))]
         c_values_2 = temp_df_2[C].values
         user1_exhibit_C = np.count_nonzero(c_values_2)
 
-        df_user2 = liwc_df.loc[liwc_df.Filename.str.startswith(str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[1]))]
-        df_user1 = liwc_df.loc[liwc_df.Filename.str.startswith(str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[0]))]
+        df_user2 = liwc_df.loc[liwc_df.Filename.str.startswith(pair_conv_str + str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[1]))]
+        df_user1 = liwc_df.loc[liwc_df.Filename.str.startswith(pair_conv_str + str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[0]))]
         df_concat = pd.concat([df_user2, df_user1])
 
         both_users_exhibit_C = 0.0
@@ -77,8 +86,7 @@ def accommodation_dict(dict_input, C, liwc_path, subreddit_name):
             # temp_concatdf should be of the shape (2,2):
             #print temp_concatdf
             if temp_concatdf.shape[0] != 2:
-
-               # print "Error while calculating bothUsersExhibitC."
+                # print "Error while calculating bothUsersExhibitC."
                 continue
                 #TODO: I changed this from return none to continue
 
@@ -87,9 +95,22 @@ def accommodation_dict(dict_input, C, liwc_path, subreddit_name):
                 both_users_exhibit_C += 1
 
         #TODO: I added this rudimentary smoothing
-        user1_exhibit_C += 1
-        both_users_exhibit_C +=1
+        #user1_exhibit_C += 1
+        #both_users_exhibit_C +=1
+
+        if user1_exhibit_C == 0:
+            print "Skipping cuz first-term-denominator: ", user1_exhibit_C
+            continue
+
         first_term = both_users_exhibit_C / float(user1_exhibit_C)
+
+
+
+#        if user1_exhibit_C != 0:
+#           first_term = both_users_exhibit_C / float(user1_exhibit_C)
+
+#        else:
+#           first_term = 0.0
 #         print first_term
 
         accom[user_pair] = first_term - second_term
@@ -98,8 +119,8 @@ def accommodation_dict(dict_input, C, liwc_path, subreddit_name):
         conv_index += 1
     return accom, accom_terms
 
-    
-    
+
+
 '''
 - Takes in the accommodation dictionary returned by the above function.
 - Returns the accommodation exhibited in the entire dataset.
@@ -115,17 +136,17 @@ def dataset_accom(acc_dict):
 def influence(acc_dict):
     # Dictionary with key = user_pair; value = list of two floats: [Acc(a,b), Acc(b,a)]
     influence_dict = {}
-    
+
     # Using the fact that sorted will have the user_pair in same order.
     for user_pair, accomm in acc_dict.items():
         SortedUserPair = tuple(sorted(user_pair))
-        
+
         if SortedUserPair not in influence_dict:
             influence_dict[SortedUserPair] = [accomm]
-            
+
         elif SortedUserPair in influence_dict:
             influence_dict[SortedUserPair].append(accomm)
-        
+
     # Calculate first term (mean of max values) and second term (mean of min values):
     first = []
     second = []
@@ -134,10 +155,10 @@ def influence(acc_dict):
         if len(acc_list) == 2:
             first.append(np.array(acc_list).max())
             second.append(np.array(acc_list).min())
-    
+
     first_term = np.array(first).mean()
     second_term = np.array(second).mean()
-    
+
     return first_term, second_term
 
 
@@ -149,7 +170,7 @@ def calculate_influence_dict(acc_dict):
     influence_dict = {}
     for user_pair, accom in acc_dict.items():
         reverse_userpair = tuple(reversed(user_pair))
-        
+
         if reverse_userpair in acc_dict and user_pair in acc_dict:
             influence_dict[user_pair] = accom - acc_dict[reverse_userpair]
 #         acc_dict.pop(user_pair)
@@ -158,7 +179,7 @@ def calculate_influence_dict(acc_dict):
 
 
 # EXAMPLE RUN:
-# my = {('user1', 'user2'): [('hi','hello'), ('how are you','good'), ('what else man', 'what do you think')], 
+# my = {('user1', 'user2'): [('hi','hello'), ('how are you','good'), ('what else man', 'what do you think')],
 #      ('user3', 'user4'): [('who is the best','we are'), ('you do not say','i will do whatever')],
 #      ('user5', 'user2'): [('who is ','you and me'), ('cmon man','yeah let us do this')]}
 # liwc_path = '../../accom_try (14 files)).txt'
