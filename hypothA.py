@@ -16,11 +16,11 @@ import praw
 class DataProcessor:
 
     def __init__(self, subreddit_list, daterange, base_path, feature_list, maximum_number_of_comment_pairs, length_restriction=False, minimum_convo_length=5, minimum_length=0):
-    	self.redd = praw.Reddit(client_id='15-pbNIEH5XoUw',
-                    		client_secret = 'AogNLQuvOYW5anWIfcG63CzW4_4',
-                    		username='sbagga',
-                    		password='forresearchpurposesonly',
-                    		user_agent='sbagga research')
+    	self.redd = praw.Reddit(client_id='',
+                    		client_secret = '',
+                    		username='',
+                    		password='',
+                    		user_agent='')
         self.daterange = daterange
         self.subreddit_list = subreddit_list
         self.client = MongoClient(serverSelectionTimeoutMS=45, connectTimeoutMS=20000)
