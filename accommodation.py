@@ -47,6 +47,10 @@ def accommodation_dict(dict_input, C, liwc_path, subreddit_name, pair_conv_str):
     accom = {}
     accom_terms = {}
     conv_index = 0
+
+    total_userpairs = len(dict_input.keys())
+    skipped = 0
+
     for user_pair, conversation in dict_input.items():
 #         print "Users: ", user_pair
 
@@ -54,11 +58,11 @@ def accommodation_dict(dict_input, C, liwc_path, subreddit_name, pair_conv_str):
         total_number_of_replies = len(conversation)
 
         # Check to make sure the denom is not too small
-        if total_number_of_replies < 4:
+        if total_number_of_replies < 3:
             print "Skipping cuz second-term-denom: ", total_number_of_replies
             continue
 
-       	# Selecting the second user (replier i.e. user_pair[1]) and make sure that it's only the current conversation:
+        # Selecting the second user (replier i.e. user_pair[1]) and make sure that it's only the current conversation:
 
         temp_df_1 = liwc_df.loc[liwc_df.Filename.str.startswith(pair_conv_str + str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[1]))]
         c_values_1 = temp_df_1[C].values
@@ -72,6 +76,11 @@ def accommodation_dict(dict_input, C, liwc_path, subreddit_name, pair_conv_str):
         temp_df_2 = liwc_df.loc[liwc_df.Filename.str.startswith(pair_conv_str + str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[0]))]
         c_values_2 = temp_df_2[C].values
         user1_exhibit_C = np.count_nonzero(c_values_2)
+
+        if user1_exhibit_C == 0:
+            skipped += 1
+            #print "Skipping cuz first-term-denominator: ", user1_exhibit_C
+            continue
 
         df_user2 = liwc_df.loc[liwc_df.Filename.str.startswith(pair_conv_str + str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[1]))]
         df_user1 = liwc_df.loc[liwc_df.Filename.str.startswith(pair_conv_str + str(subreddit_name) + '_' + str(conv_index) + '_' + str(user_pair[0]))]
@@ -98,14 +107,7 @@ def accommodation_dict(dict_input, C, liwc_path, subreddit_name, pair_conv_str):
         #user1_exhibit_C += 1
         #both_users_exhibit_C +=1
 
-        if user1_exhibit_C == 0:
-            print "Skipping cuz first-term-denominator: ", user1_exhibit_C
-            continue
-
         first_term = both_users_exhibit_C / float(user1_exhibit_C)
-
-
-
 #        if user1_exhibit_C != 0:
 #           first_term = both_users_exhibit_C / float(user1_exhibit_C)
 
@@ -117,8 +119,9 @@ def accommodation_dict(dict_input, C, liwc_path, subreddit_name, pair_conv_str):
         accom_terms[user_pair] = (first_term, second_term)
 #         print "\n\n"
         conv_index += 1
-    return accom, accom_terms
 
+    print "Skipped: ", skipped
+    return accom, accom_terms, total_userpairs, skipped
 
 
 '''
@@ -127,7 +130,6 @@ def accommodation_dict(dict_input, C, liwc_path, subreddit_name, pair_conv_str):
 '''
 def dataset_accom(acc_dict):
     return np.array(acc_dict.values()).mean()
-
 
 '''
 - Takes in the accommodation dictionary of the above function
