@@ -4,13 +4,15 @@ import os
 import datetime
 from pymongo import MongoClient
 import accommodation
-from collections import Counter
+from collections import Counter, namedtuple
 import scipy
 from scipy.stats import ttest_rel, fisher_exact
 import csv
 import liwc_cohesion
 import string
 import re
+from recordclass import recordclass
+import numpy as np
 
 #create a new dataprocessor object everytime you want to work with new subreddits and dates
 class DataProcessor:
@@ -169,6 +171,83 @@ class DataProcessor:
                     all_basic_subreddit_comment_tuples[subreddit][interac] = comment_tuples[interac]
 
         return all_basic_subreddit_comment_tuples
+
+
+
+    def get_user_karma(self, user, cur_date):
+        """
+        Gets the user's comment karma up to the given date.
+        :param user: username
+        :param cur_date: the given date
+        :return: the karma as an integer
+        """
+        pass
+
+    #TODO: get rid of threads??
+    def bin_data_on_karma(self, indexed_subreddit_data):
+        """
+        Given a dictionary of subreddit data indexed on comment id, bin comment-reply pairs based on their comment and reply scores
+        :param indexed_subreddit_data:
+        :return: a dictionary of key (comment_karma, reply_karma) and value list of (comment_text, reply) tuples
+        """
+
+        ids_touched = [] #this keeps track of all ids used in creating our binned data. we don't want to use somethign twice
+
+        #creating a recordclass object - a mutable named tuple
+        CommentReply = recordclass("CommentReply", ["comment_text", "reply_text", "comment_karma", "reply_karma"])
+        unbinned_data = []
+
+
+        for reply_id in indexed_subreddit_data:
+            if reply_id in ids_touched:
+                continue
+            comment_id = indexed_subreddit_data[reply_id]["parent_id"]
+            if comment_id not in indexed_subreddit_data:
+                continue
+
+            reply = indexed_subreddit_data[reply_id]
+            comment = indexed_subreddit_data[comment_id]
+
+            reply_karma = self.get_user_karma(reply["username"], reply["created_time"])
+            comment_karma = self.get_user_karma(comment["username"], comment["created_time"])
+
+
+            reply_text = reply["body"]
+            comment_text = comment["body"]
+
+            unbinned_data.append(CommentReply(comment_text, reply_text, comment_karma, reply_karma))
+
+        all_comment_karma = [x.comment_karma for x in unbinned_data]
+        all_reply_karma = [x.reply_karma for x in unbinned_data]
+
+        max_comment_karma = max(all_comment_karma)
+        min_comment_karma = min(all_comment_karma)
+
+        max_reply_karma = max(all_comment_karma)
+        min_reply_karma = min(all_reply_karma)
+
+        bins = np.linspace(0.0, 1.0, num=20)
+
+        #normalize both comment_karma and reply_karma and replace with the bin #
+
+        for t in unbinned_data:
+            normed_comm = (float(t.comment_karma - min_comment_karma))/(float(max_comment_karma - min_comment_karma))
+            t.comment_karma = np.digitize([normed_comm], bins)[0]
+
+            normed_reply = (float(t.reply_karma - min_reply_karma))/(float(max_reply_karma - min_reply_karma))
+            t.reply_karma = np.digitize([normed_reply], bins)[0]
+
+        binned_data = {}
+
+        for t in unbinned_data:
+            if (t.comment_karma, t.reply_karma) not in binned_data:
+                binned_data[(t.comment_karma, t.reply_karma)] = []
+            binned_data[(t.comment_karma, t.reply_karma)].append((t.comment_text, t.reply_text))
+
+        return binned_data
+
+
+
 
 #    def create_txt_files(self):
 #        all_basic_subreddit_comment_tuples = self.create_tuples()
