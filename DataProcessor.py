@@ -184,6 +184,7 @@ class DataProcessor:
         pass
 
     #TODO: get rid of threads??
+    #TODO: need to add average karma per bin
     def bin_data_on_karma(self, indexed_subreddit_data):
         """
         Given a dictionary of subreddit data indexed on comment id, bin comment-reply pairs based on their comment and reply scores
@@ -233,7 +234,6 @@ class DataProcessor:
         for t in unbinned_data:
             normed_comm = (float(t.comment_karma - min_comment_karma))/(float(max_comment_karma - min_comment_karma))
             t.comment_karma = np.digitize([normed_comm], bins)[0]
-
             normed_reply = (float(t.reply_karma - min_reply_karma))/(float(max_reply_karma - min_reply_karma))
             t.reply_karma = np.digitize([normed_reply], bins)[0]
 
