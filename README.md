@@ -19,8 +19,11 @@ def hypothesis_x():
   #here we run LIWC manually. like good computer science students. 
   
   #Post-LIWC
-  LIWC_output = get_LIWC_output(LIWC_output_file)
-  #here swtich to calling the calculation hypotheses functions
+  #accommodation_terms = get_accommodation_terms(LIWC_output_file)
+  #accommodation = accommodation(accommodation_terms)
+ 
+  #does this for all 
+  stats = get_accommodation_stats(LIWC_output_file)
   
   
 
@@ -69,5 +72,23 @@ gets the data and returns a dataframe
 """
 
 
+class Methods:
 
+def accommodation(all_terms):
+  calculate accommodation according to formula
+  
+def cohesion(all_terms):
+  calculate cohesion according to formula
 
+-> this could be in either dataprocessor or methods
+def get_accommodation_terms():
+    does all the funky dataframe processing to get all the correct terms
+    
+ def get_cohesion_terms():
+  does all the funky dataframe processing for cohesion
+ 
+ #this will depend on hypothesis
+ def get_accommodation_stats(LIWC_output_file, output_directory):
+    calls get_accommodation_terms and accommodation using those terms
+    then calls various stats functions like t-test
+    writes these stats to file
